@@ -1,18 +1,73 @@
-import { useParams } from "@tanstack/react-router"
+import { useState, useEffect } from "react"
+import { DiffViewer } from "@/components/DiffViewer"
+import { Button } from "@/components/ui/button"
+import { IconRefresh } from "@tabler/icons-react"
 
 export function DiffViewRoute() {
-  const params = useParams({ strict: false })
-  const filePath = (params as Record<string, string>)._splat ?? ""
+  const [patch, setPatch] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    fetch("/api/git-diff")
+      .then((res) => {
+        if (!res.ok) throw new Error("Failed to fetch diff")
+        return res.json()
+      })
+      .then((data: { patch: string }) => {
+        setPatch(data.patch)
+        setLoading(false)
+      })
+      .catch((e) => {
+        setError(e.message)
+        setLoading(false)
+      })
+  }, [])
+
+  const refreshDiff = () => {
+    setLoading(true)
+    setError(null)
+    fetch("/api/git-diff")
+      .then((res) => {
+        if (!res.ok) throw new Error("Failed to fetch diff")
+        return res.json()
+      })
+      .then((data: { patch: string }) => {
+        setPatch(data.patch)
+        setLoading(false)
+      })
+      .catch((e) => {
+        setError(e.message)
+        setLoading(false)
+      })
+  }
 
   return (
-    <div className="flex h-full items-center justify-center p-8">
-      <div className="text-center">
-        <code className="rounded bg-muted px-3 py-1.5 text-sm">
-          {filePath || "all files"}
-        </code>
-        <p className="mt-4 text-muted-foreground">
-          Diff viewer will be implemented in plan 004
-        </p>
+    <div className="flex h-full flex-col">
+      <div className="flex items-center justify-between border-b border-border px-4 py-2">
+        <div className="flex items-center gap-2 text-sm">
+          <span className="font-medium">Git Diff</span>
+          <span className="text-muted-foreground">HEAD</span>
+        </div>
+        <Button variant="ghost" size="icon-sm" onClick={refreshDiff} disabled={loading}>
+          <IconRefresh size={14} className={loading ? "animate-spin" : ""} />
+        </Button>
+      </div>
+
+      <div className="flex-1 overflow-hidden">
+        {loading && (
+          <div className="flex h-full items-center justify-center text-muted-foreground">
+            Loading diff...
+          </div>
+        )}
+        {error && (
+          <div className="flex h-full items-center justify-center text-destructive">
+            {error}
+          </div>
+        )}
+        {!loading && !error && patch !== null && (
+          <DiffViewer patch={patch} />
+        )}
       </div>
     </div>
   )
