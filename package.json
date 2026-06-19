@@ -3,22 +3,38 @@
   "private": true,
   "version": "0.0.1",
   "type": "module",
+  "bin": {
+    "stageone": "./cli.ts"
+  },
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "format": "prettier --write \"**/*.{ts,tsx}\"",
     "typecheck": "tsc --noEmit",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "dev:server": "tsx cli.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
     "@fontsource-variable/dm-sans": "^5.2.8",
     "@fontsource-variable/geist": "^5.2.9",
+    "@hono/node-server": "^2.0.5",
+    "@pierre/diffs": "^1.2.11",
+    "@tabler/icons-react": "^3.44.0",
     "@tailwindcss/vite": "^4",
+    "@tanstack/react-router": "^1.170.16",
+    "@tiptap/core": "^3.27.0",
+    "@tiptap/markdown": "^3.27.0",
+    "@tiptap/pm": "^3.27.0",
+    "@tiptap/react": "^3.27.0",
+    "@tiptap/starter-kit": "^3.27.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "commander": "^15.0.0",
+    "hono": "^4.12.26",
     "lucide-react": "^1.21.0",
+    "open": "^11.0.0",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
     "shadcn": "^4.11.0",
@@ -28,7 +44,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10",
-    "@types/node": "^24",
+    "@types/node": "^25.9.3",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@vitejs/plugin-react": "^6",
@@ -38,6 +54,7 @@
     "globals": "^17",
     "prettier": "^3.8.3",
     "prettier-plugin-tailwindcss": "^0.8.0",
+    "tsx": "^4.22.4",
     "typescript": "~6",
     "typescript-eslint": "^8",
     "vite": "^8"
