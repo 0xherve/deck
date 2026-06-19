@@ -22,7 +22,7 @@ export function DiffViewer({ patch }: DiffViewerProps) {
         patch={patch}
         disableWorkerPool
         options={{
-          layout: "split" as const,
+          diffStyle: "split",
         }}
       />
     </div>

@@ -19,7 +19,7 @@ export function MarkdownEditor({ content, editable, onChange }: MarkdownEditorPr
     editable,
     onUpdate: ({ editor }) => {
       if (onChange) {
-        const md = editor.storage.markdown.getMarkdown()
+        const md = editor.storage.markdown.manager.serialize(editor.getJSON())
         onChange(md)
       }
     },
@@ -33,7 +33,7 @@ export function MarkdownEditor({ content, editable, onChange }: MarkdownEditorPr
 
   useEffect(() => {
     if (editor && content !== undefined) {
-      const currentMd = editor.storage.markdown.getMarkdown()
+      const currentMd = editor.storage.markdown.manager.serialize(editor.getJSON())
       if (currentMd !== content) {
         editor.commands.setContent(content)
       }
