@@ -11,12 +11,14 @@ interface MarkdownEditorProps {
 
 export function MarkdownEditor({ content, editable, onChange }: MarkdownEditorProps) {
   const editor = useEditor({
-    extensions: [
-      StarterKit,
-      Markdown,
-    ],
-    content,
+    extensions: [StarterKit, Markdown],
     editable,
+    onCreate: ({ editor }) => {
+      if (content) {
+        const parsed = editor.storage.markdown.manager.parse(content)
+        editor.commands.setContent(parsed)
+      }
+    },
     onUpdate: ({ editor }) => {
       if (onChange) {
         const md = editor.storage.markdown.manager.serialize(editor.getJSON())
@@ -35,7 +37,8 @@ export function MarkdownEditor({ content, editable, onChange }: MarkdownEditorPr
     if (editor && content !== undefined) {
       const currentMd = editor.storage.markdown.manager.serialize(editor.getJSON())
       if (currentMd !== content) {
-        editor.commands.setContent(content)
+        const parsed = editor.storage.markdown.manager.parse(content)
+        editor.commands.setContent(parsed)
       }
     }
   }, [editor, content])

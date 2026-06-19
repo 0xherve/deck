@@ -1,6 +1,6 @@
 import { useTabs } from "@/stores/tabs"
 import { useNavigate } from "@tanstack/react-router"
-import { IconX } from "@tabler/icons-react"
+import { IconX, IconGitCompare } from "@tabler/icons-react"
 import { cn } from "@/lib/utils"
 
 export function EditorTabs() {
@@ -55,6 +55,13 @@ export function EditorTabs() {
           </div>
         )
       })}
+      <button
+        onClick={() => navigate({ to: "/d/$", params: { _splat: "" } })}
+        className="flex items-center gap-1.5 px-3 py-2 text-sm text-muted-foreground transition-colors duration-150 hover:text-foreground"
+      >
+        <IconGitCompare size={14} />
+        Changes
+      </button>
     </div>
   )
 }
