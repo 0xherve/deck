@@ -1,6 +1,7 @@
 import { useTabs } from "@/stores/tabs"
 import { useNavigate } from "@tanstack/react-router"
 import { IconX, IconGitCompare } from "@tabler/icons-react"
+import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
 export function EditorTabs() {
@@ -33,7 +34,9 @@ export function EditorTabs() {
               <span className="size-1.5 rounded-full bg-primary" />
             )}
             <span className="truncate max-w-32">{fileName}</span>
-            <button
+            <Button
+              variant="ghost"
+              size="icon-xs"
               onClick={(e) => {
                 e.stopPropagation()
                 dispatch({ type: "CLOSE_TAB", path: tab.path })
@@ -48,20 +51,22 @@ export function EditorTabs() {
                   }
                 }
               }}
-              className="rounded p-0.5 opacity-0 hover:bg-muted group-hover:opacity-100"
+              className="opacity-0 group-hover:opacity-100"
             >
               <IconX size={12} />
-            </button>
+            </Button>
           </div>
         )
       })}
-      <button
+      <Button
+        variant="ghost"
+        size="sm"
         onClick={() => navigate({ to: "/d/$", params: { _splat: "" } })}
-        className="flex items-center gap-1.5 px-3 py-2 text-sm text-muted-foreground transition-colors duration-150 hover:text-foreground"
+        className="gap-1.5 rounded-none border-l border-border"
       >
         <IconGitCompare size={14} />
         Changes
-      </button>
+      </Button>
     </div>
   )
 }
