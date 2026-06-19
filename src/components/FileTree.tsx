@@ -21,17 +21,17 @@ function TreeNode({ entry, depth }: { entry: TreeEntry; depth: number }) {
       <div>
         <button
           onClick={() => setExpanded(!expanded)}
-          className="flex w-full items-center gap-1 rounded px-2 py-1 text-sm text-sidebar-foreground hover:bg-sidebar-accent"
+          className="flex w-full items-center gap-1 rounded-sm px-2 py-0.5 text-[13px] text-muted-foreground transition-colors duration-150 hover:text-foreground"
           style={{ paddingLeft: `${depth * 12 + 8}px` }}
         >
           <IconChevronRight
-            size={14}
+            size={12}
             className={cn(
-              "shrink-0 transition-transform",
+              "shrink-0 text-muted-foreground/40 transition-transform duration-150",
               expanded && "rotate-90"
             )}
           />
-          <IconFolder size={14} className="shrink-0" />
+          <IconFolder size={14} className="shrink-0 text-muted-foreground/60" />
           <span className="truncate">{entry.name}</span>
         </button>
         {expanded && entry.children && (
@@ -49,13 +49,14 @@ function TreeNode({ entry, depth }: { entry: TreeEntry; depth: number }) {
     <button
       onClick={() => navigate({ to: `/v/${entry.path}` })}
       className={cn(
-        "flex w-full items-center gap-1 rounded px-2 py-1 text-sm hover:bg-sidebar-accent",
-        isMarkdown ? "text-sidebar-primary" : "text-sidebar-foreground"
+        "flex w-full items-center gap-1.5 rounded-sm px-2 py-0.5 font-mono text-[13px] transition-colors duration-150",
+        isMarkdown
+          ? "text-muted-foreground hover:text-sidebar-primary"
+          : "text-muted-foreground hover:text-foreground"
       )}
-      style={{ paddingLeft: `${depth * 12 + 8}px` }}
+      style={{ paddingLeft: `${depth * 12 + 20}px` }}
     >
-      <span className="h-3.5 w-3.5 shrink-0" />
-      <IconFile size={14} className="shrink-0" />
+      <IconFile size={14} className="shrink-0 text-muted-foreground/60" />
       <span className="truncate">{entry.name}</span>
     </button>
   )

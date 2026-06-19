@@ -12,57 +12,54 @@ export function Sidebar() {
   return (
     <aside
       className={cn(
-        "flex h-full flex-col border-r border-sidebar-border bg-sidebar transition-[width] duration-200",
+        "flex h-full flex-col border-r border-sidebar-border bg-sidebar transition-[width] duration-150",
         collapsed ? "w-12" : "w-64"
       )}
     >
-      <div className="flex h-12 shrink-0 items-center justify-between border-b border-sidebar-border px-3">
+      <div className="flex h-10 shrink-0 items-center justify-between px-3">
         {!collapsed && (
-          <span className="text-sm font-semibold text-sidebar-primary">
+          <span className="font-mono text-xs font-medium tracking-wide uppercase text-muted-foreground">
             stageone
           </span>
         )}
         <Button
           variant="ghost"
-          size="icon-sm"
+          size="icon-xs"
           onClick={() => setCollapsed(!collapsed)}
           aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
         >
-          <IconLayoutSidebar size={16} />
+          <IconLayoutSidebar size={14} />
         </Button>
       </div>
 
       {!collapsed && (
         <>
-          <nav className="space-y-1 px-2 py-2">
+          <nav className="space-y-0.5 px-2 py-1.5">
             <Link
               to="/"
-              className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-sidebar-foreground hover:bg-sidebar-accent"
+              className="flex items-center gap-2 rounded-md px-2 py-1 text-[13px] text-muted-foreground transition-colors duration-150 hover:text-foreground"
             >
-              <IconHome size={16} />
+              <IconHome size={15} className="shrink-0" />
               Home
             </Link>
             <Link
               to="/d/$"
               params={{ _splat: "" }}
-              className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-sidebar-foreground hover:bg-sidebar-accent"
+              className="flex items-center gap-2 rounded-md px-2 py-1 text-[13px] text-muted-foreground transition-colors duration-150 hover:text-foreground"
             >
-              <IconGitCompare size={16} />
-              Diffs
+              <IconGitCompare size={15} className="shrink-0" />
+              Changes
             </Link>
           </nav>
 
-          <div className="flex-1 overflow-y-auto px-2 py-2">
-            <p className="mb-2 px-2 text-xs font-medium uppercase tracking-wider text-sidebar-foreground/60">
-              Files
-            </p>
+          <div className="flex-1 overflow-y-auto border-t border-sidebar-border px-2 pt-2">
             <FileTree />
           </div>
         </>
       )}
 
       {!collapsed && (
-        <div className="shrink-0 border-t border-sidebar-border px-3 py-2">
+        <div className="shrink-0 border-t border-sidebar-border p-2">
           <ThemeToggle />
         </div>
       )}

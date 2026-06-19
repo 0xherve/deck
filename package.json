@@ -19,6 +19,7 @@
     "@base-ui/react": "^1.6.0",
     "@fontsource-variable/dm-sans": "^5.2.8",
     "@fontsource-variable/geist": "^5.2.9",
+    "@fontsource-variable/geist-mono": "^5.2.8",
     "@hono/node-server": "^2.0.5",
     "@pierre/diffs": "^1.2.11",
     "@tabler/icons-react": "^3.44.0",

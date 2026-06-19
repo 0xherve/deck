@@ -8,6 +8,7 @@
         "@base-ui/react": "^1.6.0",
         "@fontsource-variable/dm-sans": "^5.2.8",
         "@fontsource-variable/geist": "^5.2.9",
+        "@fontsource-variable/geist-mono": "^5.2.8",
         "@hono/node-server": "^2.0.5",
         "@pierre/diffs": "^1.2.11",
         "@tabler/icons-react": "^3.44.0",
@@ -201,6 +202,8 @@
     "@fontsource-variable/dm-sans": ["@fontsource-variable/dm-sans@5.2.8", "", {}, "sha512-AxkvMTvNWgfrmlyjiV05vlHYJa+nRQCf1EfvIrQAPBpFJW0O9VTz7oAFr9S3lvbWdmnFoBk7yFqQL86u64nl2g=="],
 
     "@fontsource-variable/geist": ["@fontsource-variable/geist@5.2.9", "", {}, "sha512-TP+QSBG3wxKGPE33CbMy/L0Nu3qvJ6Fy81Yc4LnQ95xH+i+cfEp8fyU8/kfV14YwszxIFPhnoMTbjL71waVpyQ=="],
+
+    "@fontsource-variable/geist-mono": ["@fontsource-variable/geist-mono@5.2.8", "", {}, "sha512-KI5bj+hkkRiHttYHmccotUZ80ZuZyai+RwI1d7UId0clkx/jXxlo8qYK8j54WzmpBjtMoEMPyllV7faDcj+6RA=="],
 
     "@hono/node-server": ["@hono/node-server@2.0.5", "", { "peerDependencies": { "hono": "^4" } }, "sha512-yQFvDmyDo3y6rEOJZDUYPJ49DIKTPpIk4kGvm40xx4Ejne0Pu9a1+exxPN+C1UppWK/WGZX9F++/Xs231tE86g=="],
 
