@@ -1,5 +1,6 @@
-import { Moon, Sun } from "lucide-react"
+import { IconMoon, IconSun } from "@tabler/icons-react"
 import { useTheme } from "@/components/theme-provider"
+import { Button } from "@/components/ui/button"
 
 export function ThemeToggle() {
   const { theme, setTheme } = useTheme()
@@ -10,12 +11,13 @@ export function ThemeToggle() {
       window.matchMedia("(prefers-color-scheme: dark)").matches)
 
   return (
-    <button
+    <Button
+      variant="ghost"
+      size="icon-sm"
       onClick={() => setTheme(isDark ? "light" : "dark")}
-      className="inline-flex h-8 w-8 items-center justify-center rounded-md text-sidebar-foreground hover:bg-sidebar-accent"
       aria-label="Toggle theme"
     >
-      {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-    </button>
+      {isDark ? <IconSun size={16} /> : <IconMoon size={16} />}
+    </Button>
   )
 }

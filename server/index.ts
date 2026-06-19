@@ -9,43 +9,53 @@ import { createGitRoutes } from "./routes/git.ts"
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
-export function createServer(rootDir: string, port: number) {
-  const app = new Hono()
+export function createServer(rootDir: string, port: number): Promise<ReturnType<typeof serve>> {
+  return new Promise((resolve, reject) => {
+    const app = new Hono()
 
-  app.use("*", originGuard)
+    app.use("*", originGuard)
 
-  const fileRoutes = createFileRoutes(rootDir)
-  const gitRoutes = createGitRoutes(rootDir)
+    const fileRoutes = createFileRoutes(rootDir)
+    const gitRoutes = createGitRoutes(rootDir)
 
-  app.route("/", fileRoutes)
-  app.route("/", gitRoutes)
+    app.route("/", fileRoutes)
+    app.route("/", gitRoutes)
 
-  const clientDir = path.resolve(__dirname, "../dist/client")
+    const clientDir = path.resolve(__dirname, "../dist/client")
 
-  app.use(
-    "/*",
-    serveStatic({
-      root: clientDir,
-      rewriteRequestPath: (p) => p,
-    }),
-  )
+    app.use(
+      "/*",
+      serveStatic({
+        root: clientDir,
+        rewriteRequestPath: (p) => p,
+      }),
+    )
 
-  // SPA fallback
-  app.use(
-    "/*",
-    serveStatic({
-      root: clientDir,
-      rewriteRequestPath: () => "/index.html",
-    }),
-  )
+    app.use(
+      "/*",
+      serveStatic({
+        root: clientDir,
+        rewriteRequestPath: () => "/index.html",
+      }),
+    )
 
-  const server = serve({
-    fetch: app.fetch,
-    port,
+    const server = serve({
+      fetch: app.fetch,
+      port,
+    })
+
+    server.on("listening", () => {
+      console.log(`StageOne running at http://localhost:${port}`)
+      console.log(`Serving project: ${rootDir}`)
+      resolve(server)
+    })
+
+    server.on("error", (err: NodeJS.ErrnoException) => {
+      if (err.code === "EADDRINUSE") {
+        reject(new Error(`Port ${port} is already in use`))
+      } else {
+        reject(err)
+      }
+    })
   })
-
-  console.log(`StageOne running at http://localhost:${port}`)
-  console.log(`Serving project: ${rootDir}`)
-
-  return server
 }

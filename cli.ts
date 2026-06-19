@@ -16,9 +16,13 @@ program
     const rootDir = path.resolve(directory)
     const port = parseInt(options.port, 10)
 
-    createServer(rootDir, port)
-
-    await open(`http://localhost:${port}`)
+    try {
+      await createServer(rootDir, port)
+      await open(`http://localhost:${port}`)
+    } catch (e) {
+      console.error(e instanceof Error ? e.message : e)
+      process.exit(1)
+    }
   })
 
 program.parse()

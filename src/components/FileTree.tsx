@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { useNavigate } from "@tanstack/react-router"
-import { ChevronRight, File, Folder } from "lucide-react"
+import { IconChevronRight, IconFile, IconFolder } from "@tabler/icons-react"
 import { cn } from "@/lib/utils"
 
 type TreeEntry = {
@@ -24,13 +24,14 @@ function TreeNode({ entry, depth }: { entry: TreeEntry; depth: number }) {
           className="flex w-full items-center gap-1 rounded px-2 py-1 text-sm text-sidebar-foreground hover:bg-sidebar-accent"
           style={{ paddingLeft: `${depth * 12 + 8}px` }}
         >
-          <ChevronRight
+          <IconChevronRight
+            size={14}
             className={cn(
-              "h-3.5 w-3.5 shrink-0 transition-transform",
+              "shrink-0 transition-transform",
               expanded && "rotate-90"
             )}
           />
-          <Folder className="h-3.5 w-3.5 shrink-0" />
+          <IconFolder size={14} className="shrink-0" />
           <span className="truncate">{entry.name}</span>
         </button>
         {expanded && entry.children && (
@@ -54,7 +55,7 @@ function TreeNode({ entry, depth }: { entry: TreeEntry; depth: number }) {
       style={{ paddingLeft: `${depth * 12 + 8}px` }}
     >
       <span className="h-3.5 w-3.5 shrink-0" />
-      <File className="h-3.5 w-3.5 shrink-0" />
+      <IconFile size={14} className="shrink-0" />
       <span className="truncate">{entry.name}</span>
     </button>
   )

@@ -1,17 +1,19 @@
-import { execSync } from "node:child_process"
+import { exec } from "node:child_process"
+import { promisify } from "node:util"
 import { Hono } from "hono"
+
+const execAsync = promisify(exec)
 
 export function createGitRoutes(rootDir: string) {
   const app = new Hono()
 
-  app.get("/api/git-diff", (c) => {
+  app.get("/api/git-diff", async (c) => {
     try {
-      const patch = execSync("git diff HEAD", {
+      const { stdout } = await execAsync("git diff HEAD", {
         cwd: rootDir,
-        encoding: "utf-8",
         maxBuffer: 10 * 1024 * 1024,
       })
-      return c.json({ patch })
+      return c.json({ patch: stdout })
     } catch {
       return c.json({ patch: "" })
     }

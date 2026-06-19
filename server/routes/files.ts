@@ -1,7 +1,7 @@
 import fs from "node:fs"
 import path from "node:path"
 import { Hono } from "hono"
-import { resolveSafePath } from "../middleware/security.ts"
+import { resolveSafePath, PathTraversalError } from "../middleware/security.ts"
 
 interface TreeEntry {
   name: string
@@ -10,8 +10,8 @@ interface TreeEntry {
   children?: TreeEntry[]
 }
 
-function readTree(dir: string, rootDir: string): TreeEntry[] {
-  const entries = fs.readdirSync(dir, { withFileTypes: true })
+async function readTree(dir: string, rootDir: string): Promise<TreeEntry[]> {
+  const entries = await fs.promises.readdir(dir, { withFileTypes: true })
   const result: TreeEntry[] = []
 
   for (const entry of entries) {
@@ -27,7 +27,7 @@ function readTree(dir: string, rootDir: string): TreeEntry[] {
         name: entry.name,
         path: relativePath,
         type: "directory",
-        children: readTree(fullPath, rootDir),
+        children: await readTree(fullPath, rootDir),
       })
     } else {
       result.push({
@@ -47,12 +47,12 @@ function readTree(dir: string, rootDir: string): TreeEntry[] {
 export function createFileRoutes(rootDir: string) {
   const app = new Hono()
 
-  app.get("/api/tree", (c) => {
-    const tree = readTree(rootDir, rootDir)
+  app.get("/api/tree", async (c) => {
+    const tree = await readTree(rootDir, rootDir)
     return c.json(tree)
   })
 
-  app.get("/api/file", (c) => {
+  app.get("/api/file", async (c) => {
     const filePath = c.req.query("path")
     if (!filePath) {
       return c.text("Missing path parameter", 400)
@@ -60,10 +60,10 @@ export function createFileRoutes(rootDir: string) {
 
     try {
       const resolved = resolveSafePath(rootDir, filePath)
-      const content = fs.readFileSync(resolved, "utf-8")
-      return c.json({ path: filePath, content })
+      const content = await fs.promises.readFile(resolved, "utf-8")
+      return c.text(content)
     } catch (e) {
-      if (e instanceof Error && e.message === "Path traversal detected") {
+      if (e instanceof PathTraversalError) {
         return c.text("Forbidden", 403)
       }
       return c.text("Not found", 404)
@@ -78,10 +78,10 @@ export function createFileRoutes(rootDir: string) {
 
     try {
       const resolved = resolveSafePath(rootDir, body.path)
-      fs.writeFileSync(resolved, body.content, "utf-8")
+      await fs.promises.writeFile(resolved, body.content, "utf-8")
       return c.json({ ok: true })
     } catch (e) {
-      if (e instanceof Error && e.message === "Path traversal detected") {
+      if (e instanceof PathTraversalError) {
         return c.text("Forbidden", 403)
       }
       return c.text("Write failed", 500)

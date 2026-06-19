@@ -1,10 +1,17 @@
 import path from "node:path"
 import type { MiddlewareHandler } from "hono"
 
+export class PathTraversalError extends Error {
+  constructor() {
+    super("Path traversal detected")
+    this.name = "PathTraversalError"
+  }
+}
+
 export function resolveSafePath(rootDir: string, relativePath: string): string {
   const resolved = path.resolve(rootDir, relativePath)
   if (!resolved.startsWith(rootDir + path.sep) && resolved !== rootDir) {
-    throw new Error("Path traversal detected")
+    throw new PathTraversalError()
   }
   return resolved
 }
