@@ -18,12 +18,15 @@ export function resolveSafePath(rootDir: string, relativePath: string): string {
 
 export const originGuard: MiddlewareHandler = async (c, next) => {
   const origin = c.req.header("origin")
-  if (
-    origin &&
-    !origin.includes("localhost") &&
-    !origin.includes("127.0.0.1")
-  ) {
-    return c.text("Forbidden", 403)
+  if (origin) {
+    try {
+      const url = new URL(origin)
+      if (url.hostname !== "localhost" && url.hostname !== "127.0.0.1") {
+        return c.text("Forbidden", 403)
+      }
+    } catch {
+      return c.text("Forbidden", 403)
+    }
   }
   await next()
 }

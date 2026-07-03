@@ -21,7 +21,7 @@ export function EditorToolbar({ filePath, mode, onModeChange, dirty }: EditorToo
   return (
     <div className="flex items-center justify-between border-b border-border px-4 py-2">
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <code className="rounded bg-muted px-1.5 py-0.5 text-xs">{filePath}</code>
+        <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">{filePath}</code>
         {dirty && (
           <span className="text-xs text-primary">Unsaved</span>
         )}

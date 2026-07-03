@@ -1,6 +1,7 @@
 import { Outlet } from "@tanstack/react-router"
 import { useReducer } from "react"
-import { Sidebar } from "@/components/Sidebar"
+import { AppSidebar } from "@/components/app-sidebar"
+import { SidebarProvider } from "@/components/ui/sidebar"
 import { TabsContext, tabsReducer } from "@/stores/tabs"
 
 export function RootLayout() {
@@ -8,12 +9,12 @@ export function RootLayout() {
 
   return (
     <TabsContext.Provider value={{ state, dispatch }}>
-      <div className="flex h-screen overflow-hidden bg-background text-foreground">
-        <Sidebar />
+      <SidebarProvider className="h-screen overflow-hidden bg-background text-foreground">
+        <AppSidebar />
         <main className="flex flex-1 flex-col overflow-hidden">
           <Outlet />
         </main>
-      </div>
+      </SidebarProvider>
     </TabsContext.Provider>
   )
 }

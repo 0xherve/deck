@@ -2,8 +2,10 @@ import { useParams } from "@tanstack/react-router"
 import { useState, useEffect, useCallback } from "react"
 import { useTabs } from "@/stores/tabs"
 import { useFileContent } from "@/hooks/useFileContent"
-import { useAutoSave } from "@/hooks/useAutoSave"
+import { useFileMeta } from "@/hooks/useFileMeta"
 import { MarkdownEditor } from "@/components/MarkdownEditor"
+import { ImageViewer } from "@/components/ImageViewer"
+import { BinaryViewer } from "@/components/BinaryViewer"
 import { SourceEditor } from "@/components/SourceEditor"
 import { EditorToolbar, type EditorMode } from "@/components/EditorToolbar"
 import { EditorTabs } from "@/components/EditorTabs"
@@ -16,9 +18,10 @@ export function FileViewRoute() {
   const { state, dispatch } = useTabs()
   const { content, loading, error } = useFileContent(filePath)
   const [mode, setMode] = useState<EditorMode>("read")
-  const [editableContent, setEditableContent] = useState<string>("")
 
   const isMarkdown = filePath.endsWith(".md") || filePath.endsWith(".mdx")
+  const meta = useFileMeta(filePath)
+  const baseDir = filePath.includes("/") ? filePath.substring(0, filePath.lastIndexOf("/")) : ""
 
   const handleDirtyChange = useCallback(
     (dirty: boolean) => {
@@ -27,46 +30,21 @@ export function FileViewRoute() {
     [dispatch, filePath]
   )
 
-  const { bufferChange, getBufferedContent } = useAutoSave(filePath, handleDirtyChange)
-
   useEffect(() => {
-    if (filePath) {
-      dispatch({ type: "OPEN_TAB", path: filePath })
-    }
+    if (filePath) dispatch({ type: "OPEN_TAB", path: filePath })
   }, [filePath, dispatch])
-
-  useEffect(() => {
-    if (content === null) return
-    const buffered = getBufferedContent()
-    Promise.resolve().then(() => {
-      if (buffered !== null) {
-        setEditableContent(buffered)
-        if (buffered !== content) {
-          handleDirtyChange(true)
-        }
-      } else {
-        setEditableContent(content)
-      }
-    })
-  }, [content, getBufferedContent, handleDirtyChange])
-
-  const handleChange = useCallback(
-    (newContent: string) => {
-      setEditableContent(newContent)
-      bufferChange(newContent)
-    },
-    [bufferChange]
-  )
 
   const currentTab = state.tabs.find((t) => t.path === filePath)
 
-  if (loading) {
+  if (loading || content === null) {
     return (
       <div className="flex h-full flex-col">
         <EditorTabs />
-        <div className="flex flex-1 items-center justify-center text-muted-foreground">
-          Loading...
-        </div>
+        {loading && (
+          <div className="flex flex-1 items-center justify-center text-muted-foreground">
+            Loading...
+          </div>
+        )}
       </div>
     )
   }
@@ -83,16 +61,34 @@ export function FileViewRoute() {
   }
 
   if (!isMarkdown) {
+    if (meta?.isImage) {
+      return (
+        <div className="flex h-full flex-col">
+          <EditorTabs />
+          <ImageViewer filePath={filePath} fileSize={meta.size} />
+        </div>
+      )
+    }
+
+    if (meta?.isBinary) {
+      return (
+        <div className="flex h-full flex-col">
+          <EditorTabs />
+          <BinaryViewer filePath={filePath} fileSize={meta.size} ext={meta.ext} />
+        </div>
+      )
+    }
+
     return (
       <div className="flex h-full flex-col">
         <EditorTabs />
         <div className="flex items-center gap-2 border-b border-border px-4 py-2 text-sm text-muted-foreground">
-          <IconFile size={14} />
-          <code className="rounded bg-muted px-1.5 py-0.5 text-xs">{filePath}</code>
+          <IconFile size={14} className="text-muted-foreground/60" />
+          <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">{filePath}</code>
           <span className="text-xs">(read-only)</span>
         </div>
-        <div className="flex-1 overflow-auto">
-          <CodeViewer content={editableContent} filePath={filePath} />
+        <div key={filePath} className="flex-1 overflow-auto">
+          <CodeViewer content={content} filePath={filePath} />
         </div>
       </div>
     )
@@ -107,18 +103,20 @@ export function FileViewRoute() {
         onModeChange={setMode}
         dirty={currentTab?.dirty ?? false}
       />
-      <div className="flex-1 overflow-auto">
+      <div key={filePath} className="flex-1 overflow-auto">
         {mode === "source" ? (
           <SourceEditor
-            content={editableContent}
+            content={content}
             editable={true}
-            onChange={handleChange}
+            onChange={() => {}}
           />
         ) : (
           <MarkdownEditor
-            content={editableContent}
+            content={content}
             editable={mode === "wysiwyg"}
-            onChange={handleChange}
+            filePath={filePath}
+            onDirtyChange={handleDirtyChange}
+            baseDir={baseDir}
           />
         )}
       </div>

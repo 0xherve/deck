@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { DiffViewer } from "@/components/DiffViewer"
 import { Button } from "@/components/ui/button"
 import { IconRefresh } from "@tabler/icons-react"
@@ -8,23 +8,7 @@ export function DiffViewRoute() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    fetch("/api/git-diff")
-      .then((res) => {
-        if (!res.ok) throw new Error("Failed to fetch diff")
-        return res.json()
-      })
-      .then((data: { patch: string }) => {
-        setPatch(data.patch)
-        setLoading(false)
-      })
-      .catch((e) => {
-        setError(e.message)
-        setLoading(false)
-      })
-  }, [])
-
-  const refreshDiff = () => {
+  const fetchDiff = useCallback(() => {
     setLoading(true)
     setError(null)
     fetch("/api/git-diff")
@@ -40,7 +24,9 @@ export function DiffViewRoute() {
         setError(e.message)
         setLoading(false)
       })
-  }
+  }, [])
+
+  useEffect(() => { fetchDiff() }, [fetchDiff])
 
   return (
     <div className="flex h-full flex-col">
@@ -49,7 +35,7 @@ export function DiffViewRoute() {
           <span className="font-medium">Git Diff</span>
           <span className="text-muted-foreground">HEAD</span>
         </div>
-        <Button variant="ghost" size="icon-sm" onClick={refreshDiff} disabled={loading}>
+        <Button variant="ghost" size="icon-sm" onClick={fetchDiff} disabled={loading}>
           <IconRefresh size={14} className={loading ? "animate-spin" : ""} />
         </Button>
       </div>

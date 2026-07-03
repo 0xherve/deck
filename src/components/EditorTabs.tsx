@@ -11,7 +11,8 @@ export function EditorTabs() {
   if (state.tabs.length === 0) return null
 
   return (
-    <div className="flex items-center gap-0 border-b border-border bg-muted/30 overflow-x-auto">
+    <div className="flex w-full items-center border-b border-border bg-muted/30">
+      <div className="flex min-w-0 flex-1 items-center gap-0 overflow-x-auto">
       {state.tabs.map((tab) => {
         const fileName = tab.path.split("/").pop() || tab.path
         const isActive = tab.path === state.activeTab
@@ -58,11 +59,12 @@ export function EditorTabs() {
           </div>
         )
       })}
+      </div>
       <Button
         variant="ghost"
         size="sm"
         onClick={() => navigate({ to: "/d/$", params: { _splat: "" } })}
-        className="gap-1.5 rounded-none border-l border-border"
+        className="shrink-0 gap-1.5 rounded-none border-l border-border ml-auto"
       >
         <IconGitCompare size={14} />
         Changes
