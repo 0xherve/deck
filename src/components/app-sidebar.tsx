@@ -24,7 +24,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     <Sidebar {...props}>
       <SidebarHeader>
         <span className="px-2 font-mono text-xs font-medium tracking-wide uppercase text-muted-foreground">
-          stageone
+          deck
         </span>
       </SidebarHeader>
       <SidebarContent>

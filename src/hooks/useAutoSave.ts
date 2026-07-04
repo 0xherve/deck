@@ -9,7 +9,7 @@ export function useAutoSave(
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const lastSavedRef = useRef<string | null>(null)
 
-  const bufferKey = filePath ? `stageone:buffer:${filePath}` : null
+  const bufferKey = filePath ? `deck:buffer:${filePath}` : null
 
   const save = useCallback(
     async (content: string) => {

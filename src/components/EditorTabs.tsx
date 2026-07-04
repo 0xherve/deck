@@ -3,10 +3,12 @@ import { useNavigate } from "@tanstack/react-router"
 import { IconX, IconGitCompare } from "@tabler/icons-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import { useSCPanel } from "@/routes/__root"
 
 export function EditorTabs() {
   const { state, dispatch } = useTabs()
   const navigate = useNavigate()
+  const { toggle } = useSCPanel()
 
   if (state.tabs.length === 0) return null
 
@@ -63,7 +65,7 @@ export function EditorTabs() {
       <Button
         variant="ghost"
         size="sm"
-        onClick={() => navigate({ to: "/d/$", params: { _splat: "" } })}
+        onClick={toggle}
         className="shrink-0 gap-1.5 rounded-none border-l border-border ml-auto"
       >
         <IconGitCompare size={14} />

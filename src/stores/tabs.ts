@@ -35,7 +35,7 @@ export function tabsReducer(state: TabsState, action: TabsAction): TabsState {
         const idx = state.tabs.findIndex((t) => t.path === action.path)
         activeTab = filtered[Math.min(idx, filtered.length - 1)]?.path ?? null
       }
-      sessionStorage.removeItem(`stageone:buffer:${action.path}`)
+      sessionStorage.removeItem(`deck:buffer:${action.path}`)
       return { tabs: filtered, activeTab }
     }
     case "SET_ACTIVE":

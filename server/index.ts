@@ -45,7 +45,7 @@ export function createServer(rootDir: string, port: number): Promise<ReturnType<
     })
 
     server.on("listening", () => {
-      console.log(`StageOne running at http://localhost:${port}`)
+      console.log(`Deck running at http://localhost:${port}`)
       console.log(`Serving project: ${rootDir}`)
       resolve(server)
     })

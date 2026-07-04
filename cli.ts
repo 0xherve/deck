@@ -8,8 +8,8 @@ import { createServer } from "./server/index.ts"
 const program = new Command()
 
 program
-  .name("stageone")
-  .description("Launch StageOne for a project directory")
+  .name("deck")
+  .description("Launch Deck for a project directory")
   .argument("[directory]", "Directory to serve", ".")
   .option("-p, --port <number>", "Port number", "5200")
   .action(async (directory: string, options: { port: string }) => {

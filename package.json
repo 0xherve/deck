@@ -1,19 +1,19 @@
 {
-  "name": "stageone",
+  "name": "deck",
   "private": true,
   "version": "0.0.1",
   "type": "module",
   "bin": {
-    "stageone": "./cli.ts"
+    "deck": "./cli.ts"
   },
   "scripts": {
-    "dev": "vite",
+    "dev": "tsx cli.ts",
+    "dev:web": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "format": "prettier --write \"**/*.{ts,tsx}\"",
     "typecheck": "tsc --noEmit",
-    "preview": "vite preview",
-    "dev:server": "tsx cli.ts"
+    "preview": "vite preview"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
