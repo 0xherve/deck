@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>04 — Building for Production</title>
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<div class="container">
+  <a href="index.html" class="back">&larr; All modules</a>
+  <header>
+    <div class="module-label">Module 04</div>
+    <h1>Building for Production</h1>
+    <p>Understand what Vite does under the hood, shrink your bundle, and publish Deck to npm so anyone can <code>npx deck</code> and it just works.</p>
+  </header>
+
+  <div class="lesson">
+    <div class="lesson-number">Lesson 4.1</div>
+    <h2>What Vite actually does</h2>
+    <div class="tag-row"><span class="tag">vite</span><span class="tag green">bundling</span></div>
+    <p>The dev server uses native ESM — no bundling. The production build uses Rollup to tree-shake, code-split, and output optimized chunks. You'll read your own build output and understand every file.</p>
+    <div class="section-label">What you'll do</div>
+    <ul class="steps">
+      <li>Run <code>vite build</code> and inspect what lands in <code>dist/</code></li>
+      <li>Understand chunks, entry points, and hash naming</li>
+      <li>Read the Rollup chunk graph and see what imports what</li>
+      <li>Compare dev mode (ESM, no transform) vs prod mode (bundled, minified)</li>
+    </ul>
+  </div>
+
+  <div class="lesson">
+    <div class="lesson-number">Lesson 4.2</div>
+    <h2>Bundle analysis and optimization</h2>
+    <div class="tag-row"><span class="tag red">performance</span></div>
+    <p>Find what's bloating your bundle. Deck ships Tabler Icons, Tiptap, and shadcn — some of those are bigger than they need to be. You'll measure, then cut.</p>
+    <div class="section-label">What you'll do</div>
+    <ul class="steps">
+      <li>Add rollup-plugin-visualizer and read the treemap</li>
+      <li>Identify the largest chunks and what's pulling them in</li>
+      <li>Lazy-load routes with <code>React.lazy</code> and dynamic imports</li>
+      <li>Drop unused icon imports and measure the difference</li>
+    </ul>
+  </div>
+
+  <div class="lesson">
+    <div class="lesson-number">Lesson 4.3</div>
+    <h2>The npm publish pipeline</h2>
+    <div class="tag-row"><span class="tag">npm</span><span class="tag green">publishing</span></div>
+    <p>The <code>package.json</code> fields that actually matter: <code>bin</code>, <code>files</code>, <code>engines</code>, <code>exports</code>. You'll test-install locally before publishing anything.</p>
+    <div class="section-label">What you'll do</div>
+    <ul class="steps">
+      <li>Configure <code>files</code> to ship only what's needed (not your source)</li>
+      <li>Set <code>engines</code> to declare Node version requirements</li>
+      <li>Use <code>npm pack</code> to inspect exactly what would be published</li>
+      <li>Test with <code>npm link</code> in another directory — does it work?</li>
+    </ul>
+  </div>
+
+  <div class="lesson">
+    <div class="lesson-number">Lesson 4.4</div>
+    <h2>Ship a binary CLI</h2>
+    <div class="tag-row"><span class="tag">cli</span><span class="tag yellow">distribution</span></div>
+    <p>Right now Deck needs <code>tsx</code> to run the TypeScript CLI. Published packages need compiled JS. You'll set up the build chain so <code>npx deck</code> just works.</p>
+    <div class="section-label">What you'll do</div>
+    <ul class="steps">
+      <li>Compile <code>cli.ts</code> and <code>server/</code> to JS with the right module format</li>
+      <li>Add the shebang (<code>#!/usr/bin/env node</code>) to the compiled output</li>
+      <li>Wire up <code>bin</code> in package.json pointing to the compiled file</li>
+      <li>Test the full flow: <code>npm pack</code>, install the tarball, run <code>deck</code></li>
+    </ul>
+  </div>
+</div>
+</body>
+</html>
