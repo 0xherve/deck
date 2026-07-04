@@ -23,10 +23,10 @@ export function EditorTabs() {
           <div
             key={tab.path}
             className={cn(
-              "group flex items-center gap-1.5 border-r border-border px-3 py-2 text-sm cursor-pointer",
+              "group flex items-center gap-1 border-r border-border pl-3 pr-1 py-2 text-xs cursor-pointer",
               isActive
-                ? "bg-background text-foreground"
-                : "text-muted-foreground hover:bg-background/50"
+                ? "bg-card text-foreground"
+                : "text-muted-foreground hover:bg-card/50"
             )}
             onClick={() => {
               dispatch({ type: "SET_ACTIVE", path: tab.path })
@@ -54,7 +54,7 @@ export function EditorTabs() {
                   }
                 }
               }}
-              className="opacity-0 group-hover:opacity-100"
+              className="opacity-0 group-hover:opacity-100 p-0"
             >
               <IconX size={12} />
             </Button>
@@ -66,7 +66,7 @@ export function EditorTabs() {
         variant="ghost"
         size="sm"
         onClick={toggle}
-        className="shrink-0 gap-1.5 rounded-none border-l border-border ml-auto"
+        className="shrink-0 gap-1.5 rounded-none border-l border-border ml-auto mr-1"
       >
         <IconGitCompare size={14} />
         Changes

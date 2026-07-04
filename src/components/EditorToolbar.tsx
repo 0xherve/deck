@@ -26,15 +26,15 @@ export function EditorToolbar({ filePath, mode, onModeChange, dirty }: EditorToo
           <span className="text-xs text-primary">Unsaved</span>
         )}
       </div>
-      <div className="flex items-center gap-1 rounded-lg bg-muted p-0.5">
+      <div className="flex items-center gap-0.5 rounded-md bg-muted p-0.5">
         {modes.map((m) => (
           <Button
             key={m.value}
             variant="ghost"
             size="xs"
             className={cn(
-              "gap-1",
-              mode === m.value && "bg-background shadow-sm"
+              "gap-1 rounded-sm hover:!bg-background",
+              mode === m.value && "bg-background hover:bg-background"
             )}
             onClick={() => onModeChange(m.value)}
           >

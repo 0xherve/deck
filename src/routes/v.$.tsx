@@ -87,7 +87,7 @@ export function FileViewRoute() {
           <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">{filePath}</code>
           <span className="text-xs">(read-only)</span>
         </div>
-        <div key={filePath} className="flex-1 overflow-auto">
+        <div key={filePath} className="flex-1 overflow-auto p-2">
           <CodeViewer content={content} filePath={filePath} />
         </div>
       </div>

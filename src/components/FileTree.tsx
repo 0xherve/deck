@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useCallback, useMemo } from "react"
-import { useNavigate } from "@tanstack/react-router"
+import { useNavigate, useParams } from "@tanstack/react-router"
 import { useVirtualizer } from "@tanstack/react-virtual"
 import { IconChevronRight, IconFile, IconFolder } from "@tabler/icons-react"
 import { cn } from "@/lib/utils"
@@ -42,6 +42,8 @@ export function FileTree({ gitStatus = [] }: FileTreeProps) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const parentRef = useRef<HTMLDivElement>(null)
   const navigate = useNavigate()
+  const params = useParams({ strict: false }) as Record<string, string>
+  const activePath = params._splat ?? ""
 
   const statusMap = useMemo(() => {
     const map = new Map<string, string>()
@@ -95,7 +97,7 @@ export function FileTree({ gitStatus = [] }: FileTreeProps) {
   }
 
   return (
-    <div ref={parentRef} className="h-full overflow-auto">
+    <div ref={parentRef} className="h-full overflow-auto px-2">
       <div style={{ height: `${virtualizer.getTotalSize()}px`, position: "relative" }}>
         {virtualizer.getVirtualItems().map((virtualRow) => {
           const { entry, depth } = flatRows[virtualRow.index]
@@ -108,7 +110,7 @@ export function FileTree({ gitStatus = [] }: FileTreeProps) {
               <button
                 key={entry.path}
                 onClick={() => toggleDir(entry.path)}
-                className="absolute left-0 flex w-full items-center gap-2 px-2 text-sm text-foreground/80 transition-colors hover:text-foreground"
+                className="absolute left-2 right-2 flex items-center gap-2 rounded-md px-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
                 style={{
                   top: `${virtualRow.start}px`,
                   height: "32px",
@@ -122,24 +124,31 @@ export function FileTree({ gitStatus = [] }: FileTreeProps) {
                     isExpanded && "rotate-90"
                   )}
                 />
-                <IconFolder size={16} className="shrink-0 text-muted-foreground/70" />
+                <IconFolder size={16} className="shrink-0 text-primary" />
                 <span className="truncate">{entry.name}</span>
               </button>
             )
           }
 
+          const isActive = entry.path === activePath
+
           return (
             <button
               key={entry.path}
               onClick={() => navigate({ to: "/v/$", params: { _splat: entry.path } })}
-              className="absolute left-0 flex w-full items-center gap-2 px-2 text-sm text-foreground/70 transition-colors hover:text-foreground"
+              className={cn(
+                "absolute right-2 flex items-center gap-2 rounded-md px-2 text-sm transition-colors",
+                isActive
+                  ? "bg-secondary text-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
               style={{
                 top: `${virtualRow.start}px`,
                 height: "32px",
-                paddingLeft: `${depth * 16 + 24}px`,
+                left: `${depth * 16 + 24}px`,
               }}
             >
-              <IconFile size={16} className="shrink-0 text-muted-foreground/60" />
+              <IconFile size={16} className="shrink-0 text-primary/80" />
               <span className="truncate flex-1 text-left">{entry.name}</span>
               {status && (
                 <span className="shrink-0 text-[10px] font-medium text-muted-foreground">{status}</span>

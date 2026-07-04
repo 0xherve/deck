@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>1.2 — Read the Client Like a User</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="container">
+  <a href="../01-understand.html" class="back">&larr; Module 01</a>
+  <header>
+    <div class="module-label">Lesson 1.2</div>
+    <h1>Read the Client Like a User</h1>
+    <p>Forget React terminology for now. This lesson follows what actually happens when you click a file in the sidebar — from the click to the API call to pixels on screen.</p>
+  </header>
+
+  <div class="knowledge">
+    <h3>The client's structure</h3>
+    <p>The entire client is a tree of components that render inside each other. Here's the nesting:</p>
+
+    <pre><code>RootLayout (__root.tsx)
+├── AppSidebar (app-sidebar.tsx)
+│   ├── Home link
+│   ├── Changes link
+│   └── FileTree (FileTree.tsx)
+├── [Current Route] (Outlet)
+│   ├── / → HomePage
+│   ├── /v/* → FileViewRoute
+│   └── /d/* → DiffViewRoute
+└── SourceControlPanel</code></pre>
+
+    <p><code>RootLayout</code> is the shell — it's always on screen. The <code>Outlet</code> is a hole where the current route's component gets rendered. When the URL changes, only the <code>Outlet</code> content swaps.</p>
+  </div>
+
+  <div class="knowledge" style="margin-top:40px">
+    <h3>Trace: clicking a file in the sidebar</h3>
+    <p>Here's exactly what happens when you click "README.md" in the file tree:</p>
+
+    <p style="margin-top:16px"><strong>Step 1: The click handler</strong></p>
+    <p>In <code>FileTree.tsx</code> line 134, the file button has an <code>onClick</code>:</p>
+    <pre><code>onClick={() => navigate({ to: "/v/$", params: { _splat: entry.path } })}</code></pre>
+    <p>This tells TanStack Router: "change the URL to <code>/v/README.md</code>." That's all the FileTree does — it doesn't load the file, it just navigates.</p>
+
+    <p style="margin-top:24px"><strong>Step 2: The route matches</strong></p>
+    <p>In <code>router.tsx</code>, the route <code>/v/$</code> is registered with <code>component: FileViewRoute</code>. The <code>$</code> is a "splat" parameter — it captures everything after <code>/v/</code>. So for <code>/v/src/main.tsx</code>, the splat is <code>src/main.tsx</code>.</p>
+
+    <p style="margin-top:24px"><strong>Step 3: FileViewRoute runs</strong></p>
+    <p>In <code>routes/v.$.tsx</code>, several things happen at once:</p>
+    <ul class="steps">
+      <li>It reads the file path from the URL params: <code>params._splat</code></li>
+      <li>It dispatches <code>OPEN_TAB</code> to add this file to the tab bar</li>
+      <li>Two hooks fire in parallel:
+        <ul class="steps" style="margin-top:4px">
+          <li><code>useFileContent(filePath)</code> → <code>GET /api/file?path=README.md</code></li>
+          <li><code>useFileMeta(filePath)</code> → <code>GET /api/file-meta?path=README.md</code></li>
+        </ul>
+      </li>
+    </ul>
+
+    <p style="margin-top:24px"><strong>Step 4: The right viewer is chosen</strong></p>
+    <p>Once both hooks have data, <code>FileViewRoute</code> decides what to render:</p>
+    <pre><code>Is it markdown (.md/.mdx)?  → MarkdownEditor (tiptap)
+Is it an image?              → ImageViewer
+Is it binary?                → BinaryViewer
+Otherwise                    → CodeViewer (read-only, syntax highlighted)</code></pre>
+    <p>This decision chain is just a series of <code>if</code> statements. There's no plugin system or registry — it's straightforward conditional logic.</p>
+  </div>
+
+  <div class="knowledge" style="margin-top:40px">
+    <h3>How tabs work</h3>
+    <p>Tabs are managed with <a href="https://react.dev/reference/react/useReducer">useReducer</a> — React's built-in state machine. The state shape is simple:</p>
+    <pre><code>{
+  tabs: [{ path: "README.md", dirty: false }, ...],
+  activeTab: "README.md"
+}</code></pre>
+    <p>Four actions can happen:</p>
+    <ul class="steps">
+      <li><code>OPEN_TAB</code> — adds a tab (or just activates it if already open)</li>
+      <li><code>CLOSE_TAB</code> — removes a tab and picks a neighbor as active</li>
+      <li><code>SET_ACTIVE</code> — switches the active tab</li>
+      <li><code>SET_DIRTY</code> — marks a tab as having unsaved changes</li>
+    </ul>
+    <p>This state lives in <code>__root.tsx</code> and is passed down through <code>TabsContext</code>. Any component can read or update tabs by calling <code>useTabs()</code>.</p>
+
+    <div class="callout">
+      <p><strong>Why useReducer instead of useState?</strong> When you have multiple related state values (tabs list + active tab) and actions that need to update them together (closing the active tab must also pick a new one), a reducer keeps the logic in one place instead of scattered across multiple <code>setState</code> calls. It's the same idea as Redux, but built into React.</p>
+    </div>
+  </div>
+
+  <div class="knowledge" style="margin-top:40px">
+    <h3>The three data-fetching hooks</h3>
+
+    <p style="margin-top:16px"><strong><code>useFileContent(filePath)</code></strong></p>
+    <p>Fetches the text content of a file. Returns <code>{ content, loading, error }</code>. Has a 150ms delay before showing "Loading..." — this prevents a flash on fast loads. Uses a <code>cancelled</code> flag to ignore stale responses if you click a new file before the first one loads.</p>
+
+    <p style="margin-top:16px"><strong><code>useFileMeta(filePath)</code></strong></p>
+    <p>Fetches metadata: file size, whether it's an image, whether it's binary, and the extension. This is what the viewer uses to decide which component to render.</p>
+
+    <p style="margin-top:16px"><strong><code>useAutoSave(filePath, onDirtyChange)</code></strong></p>
+    <p>Manages the save cycle. Returns two functions:</p>
+    <ul class="steps">
+      <li><code>bufferChange(content)</code> — call this on every keystroke. It stashes the content in <code>sessionStorage</code> and starts a 2.5s debounce timer</li>
+      <li><code>getBufferedContent()</code> — retrieves the buffered content (used when reopening a tab with unsaved changes)</li>
+    </ul>
+    <p>When the component unmounts (you close the tab or navigate away), the cleanup function fires a final save if there's unsent buffered content. This prevents data loss.</p>
+  </div>
+
+  <div class="knowledge" style="margin-top:40px">
+    <h3>How the FileTree stays fresh</h3>
+    <p>Look at the <code>useEffect</code> in <code>FileTree.tsx</code> (line 70-87):</p>
+    <pre><code>const es = new EventSource("/api/watch")
+es.onmessage = () => { fetchTree() }</code></pre>
+    <p>It opens an SSE connection to the server's file watcher. Every time any file changes on disk, the server pushes a message, and the FileTree re-fetches the entire tree. This is why you see new files appear immediately after creating them in the terminal.</p>
+    <p>The virtualizer (<code>@tanstack/react-virtual</code>) is there for performance: instead of rendering 10,000 DOM nodes for a large project, it only renders the rows currently visible in the scroll viewport. The rest are "virtual" — calculated but not in the DOM.</p>
+  </div>
+
+  <div class="exercise" style="margin-top:48px">
+    <h3>Check your understanding</h3>
+
+    <div class="quiz" id="q1">
+      <div class="quiz-question">When you click a file in the sidebar, what does the FileTree component itself do?</div>
+      <div class="quiz-options">
+        <button class="quiz-option" onclick="checkAnswer(this, false, 'q1', 'FileTree doesn\'t fetch file content — it only knows about the directory structure.')">It fetches the file content and passes it to the viewer</button>
+        <button class="quiz-option" onclick="checkAnswer(this, true, 'q1', 'Correct. FileTree only changes the URL. The route system handles everything else.')">It calls navigate() to change the URL — nothing else</button>
+        <button class="quiz-option" onclick="checkAnswer(this, false, 'q1', 'It does dispatch OPEN_TAB, but that happens in FileViewRoute, not FileTree.')">It dispatches OPEN_TAB and renders the file editor</button>
+        <button class="quiz-option" onclick="checkAnswer(this, false, 'q1', 'FileTree doesn\'t communicate with the editor directly.')">It sends the file path to the editor via a callback prop</button>
+      </div>
+      <div class="quiz-feedback" id="q1-feedback"></div>
+    </div>
+
+    <div class="quiz" id="q2">
+      <div class="quiz-question">Why does <code>useFileContent</code> use a <code>cancelled</code> flag?</div>
+      <div class="quiz-options">
+        <button class="quiz-option" onclick="checkAnswer(this, false, 'q2', 'The server doesn\'t close the connection — the client just ignores late responses.')">To tell the server to stop sending data for the old file</button>
+        <button class="quiz-option" onclick="checkAnswer(this, false, 'q2', 'Debouncing is about timing. The cancelled flag is about ordering.')">To debounce rapid clicks on different files in the tree</button>
+        <button class="quiz-option" onclick="checkAnswer(this, true, 'q2', 'Correct. Without it, clicking files A then B quickly could show A\'s content in B\'s view if A\'s response arrives second.')">To discard a slow response if the user already clicked a different file</button>
+        <button class="quiz-option" onclick="checkAnswer(this, false, 'q2', 'Memory leaks are about references, not stale data. The flag prevents showing wrong content.')">To prevent memory leaks from abandoned fetch requests</button>
+      </div>
+      <div class="quiz-feedback" id="q2-feedback"></div>
+    </div>
+
+    <div class="quiz" id="q3">
+      <div class="quiz-question">What decides whether a file opens in the markdown editor or the code viewer?</div>
+      <div class="quiz-options">
+        <button class="quiz-option" onclick="checkAnswer(this, false, 'q3', 'The server provides the metadata, but the decision is made client-side in the route component.')">The server's /api/file-meta endpoint returns a viewer type</button>
+        <button class="quiz-option" onclick="checkAnswer(this, false, 'q3', 'There\'s no router-level config for viewers — it\'s all in FileViewRoute\'s render logic.')">A mapping in router.tsx assigns viewers to file extensions</button>
+        <button class="quiz-option" onclick="checkAnswer(this, true, 'q3', 'Correct. Simple if/else chain: check extension for markdown, then check meta for image/binary, else code viewer.')">If-statements in FileViewRoute check the extension and file metadata</button>
+        <button class="quiz-option" onclick="checkAnswer(this, false, 'q3', 'Content-Type comes from /api/raw (for images). The viewer decision uses the extension and metadata.')">The Content-Type header from the server response determines it</button>
+      </div>
+      <div class="quiz-feedback" id="q3-feedback"></div>
+    </div>
+  </div>
+
+  <div class="exercise" style="margin-top:48px">
+    <h3>Hands-on: trace a click yourself</h3>
+    <p>Start Deck with <code>bun dev</code> and open Chrome DevTools (Network tab). Then:</p>
+    <ol class="steps">
+      <li>Click a markdown file in the sidebar. Note which API requests fire and in what order.</li>
+      <li>Click a PNG image. How does the request pattern differ?</li>
+      <li>Open the same markdown file again from the sidebar. Does it re-fetch from the server?</li>
+      <li>Edit the markdown and watch the Network tab — when does the save request fire?</li>
+    </ol>
+    <p>Write down what surprised you. Surprises are learning — expected behavior is just confirmation.</p>
+  </div>
+
+  <div class="source">
+    <strong>Primary source:</strong> <a href="https://react.dev/reference/react/useReducer">React docs — useReducer</a> — understand the pattern that drives Deck's tab management.
+  </div>
+
+  <div class="agent-reminder">
+    Anything unclear? Ask Claude — reference this lesson number (1.2). Good questions: "Why does the cleanup function in useAutoSave fire a save?" or "Walk me through what happens if two fetches race."
+  </div>
+
+  <p style="margin-top:24px;font-size:0.82rem;color:var(--fg-secondary)">
+    Previous: <a href="0001-server-request-tracing.html">1.1 — Read the Server Like a Map</a> · Next: <a href="0003-find-fix-bug.html">1.3 — Find and Fix a Real Bug</a>
+  </p>
+</div>
+
+<script>
+function checkAnswer(btn, correct, qid, explanation) {
+  const options = btn.parentElement.querySelectorAll('.quiz-option');
+  options.forEach(o => { o.disabled = true; o.style.cursor = 'default'; });
+  btn.classList.add(correct ? 'correct' : 'incorrect');
+  const fb = document.getElementById(qid + '-feedback');
+  fb.textContent = explanation;
+  fb.classList.add('show');
+}
+</script>
+</body>
+</html>

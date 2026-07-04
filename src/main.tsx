@@ -7,7 +7,7 @@ import "./index.css"
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <ThemeProvider>
+    <ThemeProvider defaultTheme="dark">
       <RouterProvider router={router} />
     </ThemeProvider>
   </StrictMode>

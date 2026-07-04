@@ -174,9 +174,9 @@ function FileSection({
 
 function statusColor(status: GitFile["status"]) {
   switch (status) {
-    case "M": return "text-yellow-500"
-    case "A": return "text-green-500"
-    case "D": return "text-red-500"
+    case "M": return "text-chart-2"
+    case "A": return "text-primary"
+    case "D": return "text-destructive"
     default: return "text-muted-foreground"
   }
 }

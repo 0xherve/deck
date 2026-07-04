@@ -3,7 +3,6 @@ import { IconGitCompare, IconHome } from "@tabler/icons-react"
 import {
   Sidebar,
   SidebarContent,
-  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
@@ -14,7 +13,6 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar"
 import { FileTree } from "@/components/FileTree"
-import { ThemeToggle } from "@/components/ThemeToggle"
 import { useGitStatus } from "@/hooks/useGitStatus"
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
@@ -22,13 +20,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   return (
     <Sidebar {...props}>
-      <SidebarHeader>
-        <span className="px-2 font-mono text-xs font-medium tracking-wide uppercase text-muted-foreground">
-          deck
+      <SidebarHeader 
+        className="px-8 pt-4">
+        <span className="px-2 font-mono text-sm font-semibold tracking-widest uppercase text-foreground">
+          Deck
         </span>
       </SidebarHeader>
       <SidebarContent>
-        <SidebarGroup>
+        <SidebarGroup className="pb-0">
           <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton render={<Link to="/" />}>
@@ -51,9 +50,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter>
-        <ThemeToggle />
-      </SidebarFooter>
       <SidebarRail />
     </Sidebar>
   )
