@@ -5,7 +5,7 @@ A local-first code editor and file browser that runs in your browser. Point it a
 ## Usage
 
 ```bash
-npx deck [directory]
+bunx deck [directory]
 ```
 
 Opens the current (or specified) directory in your browser at `localhost:5200`.
@@ -27,10 +27,10 @@ Opens the current (or specified) directory in your browser at `localhost:5200`.
 
 ```bash
 # Backend
-npm run dev
+bun dev
 
 # Frontend
-npm run dev:web
+bun dev:web
 ```
 
 ## Stack
