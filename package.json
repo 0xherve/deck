@@ -1,7 +1,17 @@
 {
   "name": "@0xherve/deck",
-  "version": "0.1.0",
+  "version": "0.0.2",
   "description": "A local-first code editor and file browser that runs in your browser",
+  "license": "MIT",
+  "homepage": "https://github.com/0xherve/deck#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/0xherve/deck.git"
+  },
+  "bugs": {
+    "url": "https://github.com/0xherve/deck/issues"
+  },
+  "preferGlobal": true,
   "type": "module",
   "bin": {
     "deck": "./dist/cli.js"

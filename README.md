@@ -5,7 +5,7 @@ A local-first code editor and file browser that runs in your browser. Point it a
 ## Install
 
 ```bash
-npm install -g deck
+npm install -g @0xherve/deck
 ```
 
 Then use `deck` from anywhere:
