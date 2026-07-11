@@ -3,13 +3,15 @@ import { useState, useEffect, useCallback } from "react"
 import { useTabs } from "@/stores/tabs"
 import { useFileContent } from "@/hooks/useFileContent"
 import { useFileMeta } from "@/hooks/useFileMeta"
+import { useAutoSave } from "@/hooks/useAutoSave"
 import { MarkdownEditor } from "@/components/MarkdownEditor"
 import { ImageViewer } from "@/components/ImageViewer"
 import { BinaryViewer } from "@/components/BinaryViewer"
 import { SourceEditor } from "@/components/SourceEditor"
+import { CodeFileEditor } from "@/components/CodeFileEditor"
 import { EditorToolbar, type EditorMode } from "@/components/EditorToolbar"
 import { EditorTabs } from "@/components/EditorTabs"
-import { CodeViewer } from "@/components/CodeViewer"
+import { registerSave, unregisterSave } from "@/stores/save-actions"
 import { IconFile } from "@tabler/icons-react"
 
 export function FileViewRoute() {
@@ -29,6 +31,25 @@ export function FileViewRoute() {
     },
     [dispatch, filePath]
   )
+
+  const { bufferChange, getBufferedContent, saveNow } = useAutoSave(
+    isMarkdown && mode === "source" ? filePath : null,
+    handleDirtyChange
+  )
+  const [sourceValue, setSourceValue] = useState("")
+
+  useEffect(() => {
+    if (content !== null) {
+      setSourceValue(getBufferedContent() ?? content)
+    }
+  }, [filePath, content, getBufferedContent])
+
+  useEffect(() => {
+    if (isMarkdown && mode === "source") {
+      registerSave(() => saveNow(sourceValue))
+      return () => unregisterSave()
+    }
+  }, [isMarkdown, mode, saveNow, sourceValue])
 
   useEffect(() => {
     if (filePath) dispatch({ type: "OPEN_TAB", path: filePath })
@@ -85,10 +106,12 @@ export function FileViewRoute() {
         <div className="flex items-center gap-2 border-b border-border px-4 py-2 text-sm text-muted-foreground">
           <IconFile size={14} className="text-muted-foreground/60" />
           <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">{filePath}</code>
-          <span className="text-xs">(read-only)</span>
+          {currentTab?.dirty && (
+            <span className="text-xs text-primary">unsaved</span>
+          )}
         </div>
-        <div key={filePath} className="flex-1 overflow-auto p-2">
-          <CodeViewer content={content} filePath={filePath} />
+        <div key={filePath} className="flex-1 overflow-auto">
+          <CodeFileEditor filePath={filePath} content={content} />
         </div>
       </div>
     )
@@ -106,9 +129,12 @@ export function FileViewRoute() {
       <div key={filePath} className="flex-1 overflow-auto">
         {mode === "source" ? (
           <SourceEditor
-            content={content}
+            content={sourceValue}
             editable={true}
-            onChange={() => {}}
+            onChange={(next) => {
+              setSourceValue(next)
+              bufferChange(next)
+            }}
           />
         ) : (
           <MarkdownEditor

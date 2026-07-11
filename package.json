@@ -1,15 +1,23 @@
 {
   "name": "deck",
-  "private": true,
-  "version": "0.0.1",
+  "version": "0.1.0",
+  "description": "A local-first code editor and file browser that runs in your browser",
   "type": "module",
   "bin": {
-    "deck": "./cli.ts"
+    "deck": "./dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18"
   },
   "scripts": {
     "dev": "tsx cli.ts",
     "dev:web": "vite",
-    "build": "tsc -b && vite build",
+    "build": "tsc -b && vite build && bun build cli.ts --outdir dist --target node --format esm --packages external",
+    "prepublishOnly": "bun run build",
     "lint": "eslint .",
     "format": "prettier --write \"**/*.{ts,tsx}\"",
     "typecheck": "tsc --noEmit",

@@ -143,6 +143,63 @@ export function createGitRoutes(rootDir: string) {
     }
   })
 
+  app.get("/api/git-branches", async (c) => {
+    try {
+      const { stdout: current } = await execFileAsync("git", ["branch", "--show-current"], {
+        cwd: rootDir,
+        maxBuffer: MAX_BUFFER,
+      })
+      const { stdout: list } = await execFileAsync(
+        "git",
+        ["branch", "--format=%(refname:short)"],
+        { cwd: rootDir, maxBuffer: MAX_BUFFER }
+      )
+      const branches = list
+        .split("\n")
+        .map((b) => b.trim())
+        .filter(Boolean)
+      return c.json({ current: current.trim(), branches })
+    } catch (e) {
+      return c.json({ error: e instanceof Error ? e.message : "Branches failed" }, 500)
+    }
+  })
+
+  app.post("/api/git-branch-create", async (c) => {
+    const body = await c.req.json<{ name: string }>()
+    if (!body.name?.trim()) {
+      return c.json({ error: "Missing branch name" }, 400)
+    }
+
+    try {
+      await execFileAsync("git", ["checkout", "-b", body.name.trim()], {
+        cwd: rootDir,
+        maxBuffer: MAX_BUFFER,
+      })
+      return c.json({ ok: true, branch: body.name.trim() })
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Create branch failed"
+      return c.json({ error: msg }, 500)
+    }
+  })
+
+  app.post("/api/git-checkout", async (c) => {
+    const body = await c.req.json<{ branch: string }>()
+    if (!body.branch?.trim()) {
+      return c.json({ error: "Missing branch name" }, 400)
+    }
+
+    try {
+      await execFileAsync("git", ["checkout", body.branch.trim()], {
+        cwd: rootDir,
+        maxBuffer: MAX_BUFFER,
+      })
+      return c.json({ ok: true, branch: body.branch.trim() })
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Checkout failed"
+      return c.json({ error: msg }, 500)
+    }
+  })
+
   app.post("/api/git-stash", async (c) => {
     const body = await c.req.json<{ action: "push" | "pop" }>()
     if (body.action !== "push" && body.action !== "pop") {

@@ -1,6 +1,7 @@
 import { Outlet } from "@tanstack/react-router"
 import { createContext, useContext, useMemo, useReducer, useState } from "react"
 import { AppSidebar } from "@/components/app-sidebar"
+import { DeckShortcuts } from "@/components/DeckShortcuts"
 import { SourceControlPanel } from "@/components/SourceControlPanel"
 import { SidebarProvider } from "@/components/ui/sidebar"
 import { TabsContext, tabsReducer } from "@/stores/tabs"
@@ -22,6 +23,7 @@ export function RootLayout() {
             <Outlet />
           </main>
           <SourceControlPanel />
+          <DeckShortcuts />
         </SidebarProvider>
       </SCPanelContext.Provider>
     </TabsContext.Provider>

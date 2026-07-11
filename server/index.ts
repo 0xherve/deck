@@ -1,3 +1,4 @@
+import fs from "node:fs"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
 import { serve } from "@hono/node-server"
@@ -21,7 +22,11 @@ export function createServer(rootDir: string, port: number): Promise<ReturnType<
     app.route("/", fileRoutes)
     app.route("/", gitRoutes)
 
-    const clientDir = path.resolve(__dirname, "../dist/client")
+    const bundledClient = path.join(__dirname, "client")
+    const devClient = path.resolve(__dirname, "../dist/client")
+    const clientDir = fs.existsSync(path.join(bundledClient, "index.html"))
+      ? bundledClient
+      : devClient
 
     app.use(
       "/*",

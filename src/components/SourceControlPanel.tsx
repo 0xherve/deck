@@ -22,21 +22,31 @@ async function postJson(url: string, body?: unknown) {
     headers: body ? { "Content-Type": "application/json" } : undefined,
     body: body ? JSON.stringify(body) : undefined,
   })
-  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? "Request failed")
-  return res.json()
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(data.error ?? "Request failed")
+  return data
 }
 
 export function SourceControlPanel() {
   const { open } = useSCPanel()
   const navigate = useNavigate()
   const [branch, setBranch] = useState("")
+  const [branches, setBranches] = useState<string[]>([])
   const [files, setFiles] = useState<GitFile[]>([])
   const [message, setMessage] = useState("")
+  const [newBranch, setNewBranch] = useState("")
   const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const refresh = useCallback(() => {
     fetch("/api/git-status").then((r) => r.json()).then(setFiles).catch(() => setFiles([]))
-    fetch("/api/git-branch").then((r) => r.json()).then((d) => setBranch(d.branch ?? "")).catch(() => {})
+    fetch("/api/git-branches")
+      .then((r) => r.json())
+      .then((d) => {
+        setBranch(d.current ?? "")
+        setBranches(d.branches ?? [])
+      })
+      .catch(() => {})
   }, [])
 
   useEffect(() => {
@@ -45,11 +55,12 @@ export function SourceControlPanel() {
 
   const run = async (fn: () => Promise<unknown>) => {
     setBusy(true)
+    setError(null)
     try {
       await fn()
       refresh()
     } catch (e) {
-      console.error(e)
+      setError(e instanceof Error ? e.message : "Request failed")
     } finally {
       setBusy(false)
     }
@@ -62,10 +73,57 @@ export function SourceControlPanel() {
 
   return (
     <div className="flex h-full w-80 shrink-0 flex-col border-l border-border bg-sidebar text-sidebar-foreground">
-      <div className="flex items-center gap-2 border-b border-border px-3 py-2 text-sm">
-        <IconGitBranch size={14} className="text-muted-foreground" />
-        <span className="truncate">{branch || "no branch"}</span>
+      <div className="border-b border-border px-3 py-2">
+        <div className="flex items-center gap-2 text-sm">
+          <IconGitBranch size={14} className="text-muted-foreground" />
+          <span className="truncate font-medium">{branch || "no branch"}</span>
+        </div>
+        <div className="mt-2 flex gap-1">
+          <input
+            value={newBranch}
+            onChange={(e) => setNewBranch(e.target.value)}
+            placeholder="New branch name"
+            className="min-w-0 flex-1 rounded-md border border-border bg-background px-2 py-1 text-xs outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          />
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={busy || !newBranch.trim()}
+            onClick={() =>
+              run(async () => {
+                await postJson("/api/git-branch-create", { name: newBranch.trim() })
+                setNewBranch("")
+              })
+            }
+          >
+            Create
+          </Button>
+        </div>
+        {branches.length > 0 && (
+          <div className="mt-2 max-h-24 overflow-y-auto rounded-md border border-border">
+            {branches.map((b) => (
+              <button
+                key={b}
+                type="button"
+                disabled={busy || b === branch}
+                onClick={() => run(() => postJson("/api/git-checkout", { branch: b }))}
+                className={cn(
+                  "block w-full truncate px-2 py-1 text-left text-xs hover:bg-sidebar-accent",
+                  b === branch && "bg-sidebar-accent font-medium"
+                )}
+              >
+                {b}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
+
+      {error && (
+        <div className="border-b border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+          {error}
+        </div>
+      )}
 
       <div className="flex flex-wrap gap-1 border-b border-border p-2">
         <Button variant="ghost" size="sm" disabled={busy} onClick={() => run(() => postJson("/api/git-stage", { paths: unstaged.map((f) => f.path) }))} title="Stage All">

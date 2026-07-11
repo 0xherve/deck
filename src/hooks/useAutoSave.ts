@@ -65,5 +65,5 @@ export function useAutoSave(
     }
   }, [filePath, bufferKey])
 
-  return { bufferChange, getBufferedContent }
+  return { bufferChange, getBufferedContent, saveNow: save }
 }
