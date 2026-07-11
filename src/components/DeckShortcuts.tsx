@@ -5,6 +5,7 @@ import { useSCPanel } from "@/routes/__root"
 import { useTabs } from "@/stores/tabs"
 import { triggerSave } from "@/stores/save-actions"
 import { cn } from "@/lib/utils"
+import { FileTypeIcon, splitFilePath } from "@/lib/file-icons"
 
 type TreeEntry = {
   name: string
@@ -255,11 +256,14 @@ export function DeckShortcuts() {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 pt-[15vh] backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 pt-[12vh]"
       onClick={() => setMode(null)}
     >
       <div
-        className="w-full max-w-lg overflow-hidden rounded-lg border border-border bg-popover text-popover-foreground shadow-lg"
+        className={cn(
+          "w-full overflow-hidden border border-border bg-background text-foreground shadow-2xl",
+          mode === "quick-open" ? "max-w-xl" : "max-w-lg rounded-lg"
+        )}
         onClick={(e) => e.stopPropagation()}
       >
         <input
@@ -269,34 +273,45 @@ export function DeckShortcuts() {
             setQuery(e.target.value)
             setIndex(0)
           }}
-          placeholder={mode === "quick-open" ? "Open file…" : "Run command…"}
-          className="w-full border-b border-border bg-transparent px-4 py-3 text-sm outline-none"
+          placeholder={mode === "quick-open" ? "Search files by name…" : "Run command…"}
+          className="w-full border-b border-border bg-muted/20 px-4 py-3 text-sm outline-none placeholder:text-muted-foreground"
         />
-        <ul className="max-h-72 overflow-y-auto py-1">
+        <ul className="max-h-80 overflow-y-auto py-2">
           {mode === "quick-open" &&
-            filteredFiles.map((path, i) => (
-              <li
-                key={path}
-                className={cn(
-                  "cursor-pointer px-4 py-2 font-mono text-sm",
-                  i === safeIndex ? "bg-accent text-accent-foreground" : "hover:bg-muted/60"
-                )}
-                onMouseEnter={() => setIndex(i)}
-                onClick={() => {
-                  navigate({ to: "/v/$", params: { _splat: path } })
-                  setMode(null)
-                }}
-              >
-                {path}
-              </li>
-            ))}
+            filteredFiles.map((path, i) => {
+              const { name, dir } = splitFilePath(path)
+              return (
+                <li
+                  key={path}
+                  className={cn(
+                    "flex cursor-pointer items-center gap-2.5 px-3 py-1.5 text-sm",
+                    i === safeIndex
+                      ? "bg-sidebar-accent text-foreground"
+                      : "text-muted-foreground hover:bg-sidebar-accent/60 hover:text-foreground"
+                  )}
+                  onMouseEnter={() => setIndex(i)}
+                  onClick={() => {
+                    navigate({ to: "/v/$", params: { _splat: path } })
+                    setMode(null)
+                  }}
+                >
+                  <FileTypeIcon name={name} type="file" size={18} />
+                  <span className="shrink-0">{name}</span>
+                  {dir && (
+                    <span className="min-w-0 flex-1 truncate text-right text-xs text-muted-foreground/60">
+                      {dir}
+                    </span>
+                  )}
+                </li>
+              )
+            })}
           {mode === "palette" &&
             filteredPalette.map((item, i) => (
               <li
                 key={item.id}
                 className={cn(
                   "flex cursor-pointer items-center justify-between px-4 py-2 text-sm",
-                  i === safeIndex ? "bg-accent text-accent-foreground" : "hover:bg-muted/60"
+                  i === safeIndex ? "bg-sidebar-accent text-foreground" : "hover:bg-sidebar-accent/60"
                 )}
                 onMouseEnter={() => setIndex(i)}
                 onClick={() => {

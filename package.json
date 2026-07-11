@@ -1,5 +1,5 @@
 {
-  "name": "deck",
+  "name": "@0xherve/deck",
   "version": "0.1.0",
   "description": "A local-first code editor and file browser that runs in your browser",
   "type": "module",
@@ -11,7 +11,7 @@
     "README.md"
   ],
   "engines": {
-    "node": ">=18"
+    "node": ">=20"
   },
   "scripts": {
     "dev": "tsx cli.ts",
@@ -58,6 +58,7 @@
     "@types/node": "^25.9.3",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@typescript/native-preview": "^7.0.0-dev.20260707.2",
     "@vitejs/plugin-react": "^6",
     "eslint": "^10",
     "eslint-plugin-react-hooks": "^7.1.1",
@@ -66,7 +67,6 @@
     "prettier": "^3.8.3",
     "prettier-plugin-tailwindcss": "^0.8.0",
     "tsx": "^4.22.4",
-    "typescript": "~6",
     "typescript-eslint": "^8",
     "vite": "^8"
   }

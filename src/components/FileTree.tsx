@@ -1,8 +1,9 @@
 import { useEffect, useState, useRef, useCallback, useMemo } from "react"
 import { useNavigate, useParams } from "@tanstack/react-router"
 import { useVirtualizer } from "@tanstack/react-virtual"
-import { IconChevronRight, IconFile, IconFolder } from "@tabler/icons-react"
+import { IconChevronRight } from "@tabler/icons-react"
 import { cn } from "@/lib/utils"
+import { FileTypeIcon } from "@/lib/file-icons"
 import type { GitStatusEntry } from "@/hooks/useGitStatus"
 
 type TreeEntry = {
@@ -56,7 +57,7 @@ export function FileTree({ gitStatus = [] }: FileTreeProps) {
   const virtualizer = useVirtualizer({
     count: flatRows.length,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => 32,
+    estimateSize: () => 28,
     overscan: 20,
   })
 
@@ -110,22 +111,25 @@ export function FileTree({ gitStatus = [] }: FileTreeProps) {
               <button
                 key={entry.path}
                 onClick={() => toggleDir(entry.path)}
-                className="absolute left-2 right-2 flex items-center gap-2 rounded-md px-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
+                className={cn(
+                  "absolute right-2 flex w-[calc(100%-8px)] items-center gap-2 rounded-sm py-1 text-sm transition-colors hover:bg-sidebar-accent",
+                  depth === 0 && isExpanded && "bg-sidebar-accent text-foreground"
+                )}
                 style={{
                   top: `${virtualRow.start}px`,
-                  height: "32px",
-                  paddingLeft: `${depth * 16 + 8}px`,
+                  height: "28px",
+                  paddingLeft: `${depth * 14 + 6}px`,
                 }}
               >
                 <IconChevronRight
-                  size={14}
+                  size={12}
                   className={cn(
-                    "shrink-0 text-muted-foreground/60 transition-transform duration-150",
+                    "shrink-0 text-muted-foreground/50 transition-transform duration-150",
                     isExpanded && "rotate-90"
                   )}
                 />
-                <IconFolder size={16} className="shrink-0 text-primary" />
-                <span className="truncate">{entry.name}</span>
+                <FileTypeIcon name={entry.name} type="directory" open={isExpanded} size={18} />
+                <span className="truncate text-muted-foreground">{entry.name}</span>
               </button>
             )
           }
@@ -137,18 +141,19 @@ export function FileTree({ gitStatus = [] }: FileTreeProps) {
               key={entry.path}
               onClick={() => navigate({ to: "/v/$", params: { _splat: entry.path } })}
               className={cn(
-                "absolute right-2 flex items-center gap-2 rounded-md px-2 text-sm transition-colors",
+                "absolute right-2 flex items-center gap-2 rounded-sm py-1 text-sm transition-colors",
                 isActive
-                  ? "bg-secondary text-foreground"
-                  : "text-muted-foreground hover:text-foreground"
+                  ? "bg-sidebar-accent text-foreground"
+                  : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
               )}
               style={{
                 top: `${virtualRow.start}px`,
-                height: "32px",
-                left: `${depth * 16 + 24}px`,
+                height: "28px",
+                left: `${depth * 14 + 22}px`,
+                right: "8px",
               }}
             >
-              <IconFile size={16} className="shrink-0 text-primary/80" />
+              <FileTypeIcon name={entry.name} type="file" size={18} />
               <span className="truncate flex-1 text-left">{entry.name}</span>
               {status && (
                 <span className="shrink-0 text-[10px] font-medium text-muted-foreground">{status}</span>

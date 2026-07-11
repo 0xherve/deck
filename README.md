@@ -2,16 +2,22 @@
 
 A local-first code editor and file browser that runs in your browser. Point it at any directory and get a full editing environment with git integration, markdown editing, diffs, and source control.
 
-## Usage
+## Install
 
 ```bash
-# Run against a directory (or current directory)
-npx deck [directory]
-bunx deck [directory]
-pnpx deck [directory]
+npm install -g deck
 ```
 
-Opens the directory in your browser. The first instance uses port 5200; each additional project gets the next free port.
+Then use `deck` from anywhere:
+
+```bash
+deck              # open current directory
+deck ~/my-project # open a specific directory
+```
+
+The first instance uses port 5200; each additional project gets the next free port.
+
+`npx deck`, `pnpm dlx deck`, and `bunx deck` also work, but global install is the intended workflow.
 
 ### Commands
 
@@ -54,6 +60,21 @@ bun dev:web
 bun run build
 ```
 
+## Releasing
+
+CI runs on every push/PR (see `[.github/workflows/ci.yml](.github/workflows/ci.yml)`).
+
+To publish a release, finish the TODOs in `[.github/workflows/release.yml](.github/workflows/release.yml)`, then:
+
+```bash
+# 1. Bump version in package.json
+# 2. Commit and tag (tag must match version, with a v prefix)
+git tag v0.1.0
+git push origin main --tags
+```
+
+GitHub Actions will build and publish when the tag is pushed.
+
 ## Stack
 
 - **Frontend:** React, TanStack Router, Tailwind CSS v4, TipTap, Vite
@@ -70,6 +91,7 @@ These features are on the wishlist but deferred from v0.1:
 - Git blame and per-file commit history
 - Merge UI and automatic stash-then-checkout
 - Cross-file content search (grep)
-- Monaco/CodeMirror-class editing with LSP, multi-cursor, autocomplete
+- LSP, and better code editing functionalities 
 - Customizable keybinding configuration
 - Remote / non-localhost access
+
