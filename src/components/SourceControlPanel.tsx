@@ -9,10 +9,12 @@ import {
   IconPackageImport,
   IconPlus,
   IconMinus,
+  IconAlertTriangle,
 } from "@tabler/icons-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { useSCPanel } from "@/routes/__root"
+import { useTabs } from "@/stores/tabs"
 
 type GitFile = { path: string; status: "M" | "A" | "D" | "U"; staged: boolean }
 
@@ -30,6 +32,7 @@ async function postJson(url: string, body?: unknown) {
 export function SourceControlPanel() {
   const { open } = useSCPanel()
   const navigate = useNavigate()
+  const { state, dispatch } = useTabs()
   const [branch, setBranch] = useState("")
   const [branches, setBranches] = useState<string[]>([])
   const [files, setFiles] = useState<GitFile[]>([])
@@ -69,6 +72,45 @@ export function SourceControlPanel() {
   const staged = files.filter((f) => f.staged)
   const unstaged = files.filter((f) => !f.staged)
 
+  const hasBufferedEdits = state.tabs.some((t) => t.dirty)
+  const hasWorkingTreeChanges = files.length > 0
+  const switchBlocked = hasBufferedEdits || hasWorkingTreeChanges
+
+  const reconcileTabsAfterSwitch = useCallback(async () => {
+    const openTabs = state.tabs
+    for (const tab of openTabs) {
+      const res = await fetch(`/api/file-meta?path=${encodeURIComponent(tab.path)}`)
+      sessionStorage.removeItem(`deck:buffer:${tab.path}`)
+      if (!res.ok) {
+        dispatch({ type: "CLOSE_TAB", path: tab.path })
+        if (tab.path === state.activeTab) {
+          navigate({ to: "/" })
+        }
+      } else {
+        dispatch({ type: "SET_DIRTY", path: tab.path, dirty: false })
+      }
+    }
+    if (state.activeTab) {
+      navigate({ to: "/v/$", params: { _splat: state.activeTab } })
+    }
+  }, [state.tabs, state.activeTab, dispatch, navigate])
+
+  const switchBranch = useCallback(
+    async (name: string) => {
+      await postJson("/api/git-checkout", { branch: name })
+      await reconcileTabsAfterSwitch()
+    },
+    [reconcileTabsAfterSwitch]
+  )
+
+  const createBranch = useCallback(
+    async (name: string) => {
+      await postJson("/api/git-branch-create", { name })
+      await reconcileTabsAfterSwitch()
+    },
+    [reconcileTabsAfterSwitch]
+  )
+
   if (!open) return null
 
   return (
@@ -91,7 +133,7 @@ export function SourceControlPanel() {
             disabled={busy || !newBranch.trim()}
             onClick={() =>
               run(async () => {
-                await postJson("/api/git-branch-create", { name: newBranch.trim() })
+                await createBranch(newBranch.trim())
                 setNewBranch("")
               })
             }
@@ -100,13 +142,18 @@ export function SourceControlPanel() {
           </Button>
         </div>
         {branches.length > 0 && (
-          <div className="mt-2 max-h-24 overflow-y-auto rounded-md border border-border">
+          <div
+            className={cn(
+              "mt-2 max-h-24 overflow-y-auto rounded-md border border-border",
+              switchBlocked && "pointer-events-none opacity-50"
+            )}
+          >
             {branches.map((b) => (
               <button
                 key={b}
                 type="button"
-                disabled={busy || b === branch}
-                onClick={() => run(() => postJson("/api/git-checkout", { branch: b }))}
+                disabled={busy || switchBlocked || b === branch}
+                onClick={() => run(() => switchBranch(b))}
                 className={cn(
                   "block w-full truncate px-2 py-1 text-left text-xs hover:bg-sidebar-accent",
                   b === branch && "bg-sidebar-accent font-medium"
@@ -115,6 +162,14 @@ export function SourceControlPanel() {
                 {b}
               </button>
             ))}
+          </div>
+        )}
+        {switchBlocked && (
+          <div className="mt-2 flex items-start gap-1.5 rounded-md bg-destructive/10 px-2 py-1.5 text-xs text-destructive">
+            <IconAlertTriangle size={13} className="mt-0.5 shrink-0" />
+            <span>
+              Commit or discard changes below before switching branches.
+            </span>
           </div>
         )}
       </div>
@@ -173,7 +228,7 @@ export function SourceControlPanel() {
           </div>
         ) : (
           <>
-            <FileSection title="Staged Changes" files={staged} onToggle={(f) => run(() => postJson("/api/git-unstage", { paths: [f.path] }))} toggleIcon={<IconMinus size={12} />} onOpen={(f) => navigate({ to: "/d/$", params: { _splat: f.path } })} />
+            <FileSection title="Staged Changes" files={staged} onToggle={(f) => run(() => postJson("/api/git-unstage", { paths: [f.path] }))} toggleIcon={<IconMinus size={12} />} onOpen={(f) => navigate({ to: "/d/$", params: { _splat: f.path }, search: { staged: "1" } })} />
             <FileSection title="Changes" files={unstaged} onToggle={(f) => run(() => postJson("/api/git-stage", { paths: [f.path] }))} toggleIcon={<IconPlus size={12} />} onOpen={(f) => navigate({ to: "/d/$", params: { _splat: f.path } })} />
           </>
         )}

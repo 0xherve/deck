@@ -1,10 +1,10 @@
-import { useParams } from "@tanstack/react-router"
+import { useParams, useNavigate } from "@tanstack/react-router"
 import { useState, useEffect, useCallback } from "react"
 import { useTabs } from "@/stores/tabs"
-import { useFileContent } from "@/hooks/useFileContent"
-import { useFileMeta } from "@/hooks/useFileMeta"
+import { useResource } from "@/hooks/useResource"
 import { useAutoSave } from "@/hooks/useAutoSave"
-import { MarkdownEditor } from "@/components/MarkdownEditor"
+import { useWatch } from "@/hooks/useWatch"
+import { MarkdownViewer } from "@/components/markdown/MarkdownViewer"
 import { ImageViewer } from "@/components/ImageViewer"
 import { BinaryViewer } from "@/components/BinaryViewer"
 import { SourceEditor } from "@/components/SourceEditor"
@@ -12,17 +12,32 @@ import { CodeFileEditor } from "@/components/CodeFileEditor"
 import { EditorToolbar, type EditorMode } from "@/components/EditorToolbar"
 import { EditorTabs } from "@/components/EditorTabs"
 import { registerSave, unregisterSave } from "@/stores/save-actions"
-import { IconFile } from "@tabler/icons-react"
+import { toggleCheckbox } from "@/lib/toggleCheckbox"
+import { IconFile, IconAlertTriangle } from "@tabler/icons-react"
+
+interface FileMeta {
+  size: number
+  isImage: boolean
+  isBinary: boolean
+  ext: string
+}
 
 export function FileViewRoute() {
   const params = useParams({ strict: false })
   const filePath = (params as Record<string, string>)._splat ?? ""
   const { state, dispatch } = useTabs()
-  const { content, loading, error } = useFileContent(filePath)
+  const { data: content, loading, error, refetch } = useResource<string>(
+    filePath ? `/api/file?path=${encodeURIComponent(filePath)}` : null,
+    { loadingDelayMs: 150 }
+  )
   const [mode, setMode] = useState<EditorMode>("read")
+  const navigate = useNavigate()
 
   const isMarkdown = filePath.endsWith(".md") || filePath.endsWith(".mdx")
-  const meta = useFileMeta(filePath)
+  const { data: meta } = useResource<FileMeta>(
+    filePath ? `/api/file-meta?path=${encodeURIComponent(filePath)}` : null,
+    { parse: (res) => res.json() }
+  )
   const baseDir = filePath.includes("/") ? filePath.substring(0, filePath.lastIndexOf("/")) : ""
 
   const handleDirtyChange = useCallback(
@@ -37,11 +52,13 @@ export function FileViewRoute() {
     handleDirtyChange
   )
   const [sourceValue, setSourceValue] = useState("")
+  const [changedOnDisk, setChangedOnDisk] = useState(false)
 
   useEffect(() => {
     if (content !== null) {
       setSourceValue(getBufferedContent() ?? content)
     }
+    setChangedOnDisk(false)
   }, [filePath, content, getBufferedContent])
 
   useEffect(() => {
@@ -56,6 +73,49 @@ export function FileViewRoute() {
   }, [filePath, dispatch])
 
   const currentTab = state.tabs.find((t) => t.path === filePath)
+
+  useWatch(
+    useCallback(
+      (e) => {
+        // Non-markdown files own their own watch handling inside CodeFileEditor.
+        if (!filePath || !isMarkdown || e.path !== filePath) return
+        if (currentTab?.dirty) {
+          setChangedOnDisk(true)
+        } else {
+          setChangedOnDisk(false)
+          refetch()
+        }
+      },
+      [filePath, isMarkdown, currentTab?.dirty, refetch]
+    )
+  )
+
+  const handleReloadFromDisk = useCallback(() => {
+    setChangedOnDisk(false)
+    if (filePath) sessionStorage.removeItem(`deck:buffer:${filePath}`)
+    handleDirtyChange(false)
+    refetch()
+  }, [filePath, handleDirtyChange, refetch])
+
+  const handleNavigate = useCallback(
+    (path: string) => navigate({ to: "/v/$", params: { _splat: path } }),
+    [navigate]
+  )
+
+  const handleToggleTask = useCallback(
+    async (index: number) => {
+      if (content === null) return
+      const next = toggleCheckbox(content, index)
+      if (next === content) return
+      await fetch("/api/save", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ path: filePath, content: next }),
+      })
+      refetch()
+    },
+    [content, filePath, refetch]
+  )
 
   if (loading || content === null) {
     return (
@@ -80,6 +140,22 @@ export function FileViewRoute() {
       </div>
     )
   }
+
+  const changedOnDiskBanner = changedOnDisk && (
+    <div className="flex items-center justify-between gap-2 border-b border-border bg-primary/10 px-4 py-2 text-xs text-primary">
+      <div className="flex items-center gap-2">
+        <IconAlertTriangle size={14} />
+        <span>This file changed on disk. Your unsaved edits are kept.</span>
+      </div>
+      <button
+        type="button"
+        onClick={handleReloadFromDisk}
+        className="rounded bg-primary/20 px-2 py-1 font-medium hover:bg-primary/30"
+      >
+        Reload from disk
+      </button>
+    </div>
+  )
 
   if (!isMarkdown) {
     if (meta?.isImage) {
@@ -111,7 +187,7 @@ export function FileViewRoute() {
           )}
         </div>
         <div key={filePath} className="flex-1 overflow-auto">
-          <CodeFileEditor filePath={filePath} content={content} />
+          <CodeFileEditor filePath={filePath} content={content} onRefetch={refetch} />
         </div>
       </div>
     )
@@ -126,23 +202,24 @@ export function FileViewRoute() {
         onModeChange={setMode}
         dirty={currentTab?.dirty ?? false}
       />
+      {changedOnDiskBanner}
       <div key={filePath} className="flex-1 overflow-auto">
         {mode === "source" ? (
           <SourceEditor
             content={sourceValue}
             editable={true}
+            filePath={filePath}
             onChange={(next) => {
               setSourceValue(next)
               bufferChange(next)
             }}
           />
         ) : (
-          <MarkdownEditor
-            content={content}
-            editable={mode === "wysiwyg"}
-            filePath={filePath}
-            onDirtyChange={handleDirtyChange}
+          <MarkdownViewer
+            source={content}
             baseDir={baseDir}
+            navigate={handleNavigate}
+            onToggleTask={handleToggleTask}
           />
         )}
       </div>

@@ -21,12 +21,13 @@ export function useAutoSave(
           body: JSON.stringify({ path: filePath, content }),
         })
         lastSavedRef.current = content
+        if (bufferKey) sessionStorage.removeItem(bufferKey)
         onDirtyChange(false)
       } catch (e) {
         console.error("Auto-save failed:", e)
       }
     },
-    [filePath, onDirtyChange]
+    [filePath, bufferKey, onDirtyChange]
   )
 
   const bufferChange = useCallback(
@@ -58,7 +59,9 @@ export function useAutoSave(
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ path: filePath, content: buffered }),
-            }).catch(() => {})
+            })
+              .then(() => sessionStorage.removeItem(bufferKey))
+              .catch(() => {})
           }
         }
       }

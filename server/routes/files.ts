@@ -2,15 +2,15 @@ import fs from "node:fs"
 import path from "node:path"
 import { Hono } from "hono"
 import { resolveSafePath, PathTraversalError } from "../middleware/security.ts"
+import { getFileTypeInfo } from "../file-types.ts"
 
 interface TreeEntry {
   name: string
   path: string
   type: "file" | "directory"
-  children?: TreeEntry[]
 }
 
-async function readTree(dir: string, rootDir: string): Promise<TreeEntry[]> {
+async function readDir(dir: string, rootDir: string): Promise<TreeEntry[]> {
   const entries = await fs.promises.readdir(dir, { withFileTypes: true })
   const result: TreeEntry[] = []
 
@@ -22,20 +22,11 @@ async function readTree(dir: string, rootDir: string): Promise<TreeEntry[]> {
     const fullPath = path.join(dir, entry.name)
     const relativePath = path.relative(rootDir, fullPath)
 
-    if (entry.isDirectory()) {
-      result.push({
-        name: entry.name,
-        path: relativePath,
-        type: "directory",
-        children: await readTree(fullPath, rootDir),
-      })
-    } else {
-      result.push({
-        name: entry.name,
-        path: relativePath,
-        type: "file",
-      })
-    }
+    result.push({
+      name: entry.name,
+      path: relativePath,
+      type: entry.isDirectory() ? "directory" : "file",
+    })
   }
 
   return result.sort((a, b) => {
@@ -48,8 +39,18 @@ export function createFileRoutes(rootDir: string) {
   const app = new Hono()
 
   app.get("/api/tree", async (c) => {
-    const tree = await readTree(rootDir, rootDir)
-    return c.json(tree)
+    const dirPath = c.req.query("path") ?? ""
+
+    try {
+      const resolved = dirPath ? resolveSafePath(rootDir, dirPath) : rootDir
+      const entries = await readDir(resolved, rootDir)
+      return c.json(entries)
+    } catch (e) {
+      if (e instanceof PathTraversalError) {
+        return c.text("Forbidden", 403)
+      }
+      return c.text("Not found", 404)
+    }
   })
 
   app.get("/api/file", async (c) => {
@@ -82,22 +83,11 @@ export function createFileRoutes(rootDir: string) {
       const buffer = await fs.promises.readFile(resolved)
 
       const ext = path.extname(resolved).toLowerCase()
-      const mimeTypes: Record<string, string> = {
-        ".png": "image/png",
-        ".jpg": "image/jpeg",
-        ".jpeg": "image/jpeg",
-        ".gif": "image/gif",
-        ".webp": "image/webp",
-        ".svg": "image/svg+xml",
-        ".ico": "image/x-icon",
-        ".bmp": "image/bmp",
-        ".avif": "image/avif",
-      }
-      const contentType = mimeTypes[ext] || "application/octet-stream"
+      const { mime } = getFileTypeInfo(ext)
 
       return new Response(buffer, {
         headers: {
-          "Content-Type": contentType,
+          "Content-Type": mime,
           "Content-Length": stat.size.toString(),
         },
       })
@@ -119,10 +109,7 @@ export function createFileRoutes(rootDir: string) {
       const resolved = resolveSafePath(rootDir, filePath)
       const stat = await fs.promises.stat(resolved)
       const ext = path.extname(resolved).toLowerCase()
-
-      const imageExts = new Set([".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".ico", ".bmp", ".avif"])
-      const isImage = imageExts.has(ext)
-      const isBinary = isImage || [".woff", ".woff2", ".ttf", ".otf", ".eot", ".pdf", ".zip", ".tar", ".gz", ".mp3", ".mp4", ".mov", ".avi", ".exe", ".dll", ".so", ".dylib", ".wasm"].includes(ext)
+      const { isImage, isBinary } = getFileTypeInfo(ext)
 
       return c.json({
         size: stat.size,
@@ -142,23 +129,50 @@ export function createFileRoutes(rootDir: string) {
     const stream = new ReadableStream({
       start(controller) {
         const encoder = new TextEncoder()
-        let debounce: ReturnType<typeof setTimeout> | null = null
+        const pending = new Map<string, ReturnType<typeof setTimeout>>()
+        let closed = false
+
+        const send = (event: string, filename: string) => {
+          if (closed) return
+          try {
+            controller.enqueue(
+              encoder.encode(`data: ${JSON.stringify({ event, path: filename })}\n\n`)
+            )
+          } catch {
+            // stream already closed/errored; cleanup happens via abort listener
+          }
+        }
 
         const watcher = fs.watch(rootDir, { recursive: true }, (event, filename) => {
           if (!filename) return
-          if (filename.startsWith(".git") || filename.includes("node_modules")) return
+          const normalized = filename.split(path.sep).join("/")
+          if (normalized.startsWith(".git") || normalized.includes("node_modules")) return
 
-          if (debounce) clearTimeout(debounce)
-          debounce = setTimeout(() => {
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ event, filename })}\n\n`))
-          }, 100)
+          const existing = pending.get(normalized)
+          if (existing) clearTimeout(existing)
+          pending.set(
+            normalized,
+            setTimeout(() => {
+              pending.delete(normalized)
+              send(event, normalized)
+            }, 100)
+          )
         })
 
-        c.req.raw.signal.addEventListener("abort", () => {
+        const cleanup = () => {
+          if (closed) return
+          closed = true
           watcher.close()
-          if (debounce) clearTimeout(debounce)
-          controller.close()
-        })
+          for (const timer of pending.values()) clearTimeout(timer)
+          pending.clear()
+          try {
+            controller.close()
+          } catch {
+            // already closed
+          }
+        }
+
+        c.req.raw.signal.addEventListener("abort", cleanup)
       },
     })
 

@@ -1,8 +1,9 @@
 import { Link } from "@tanstack/react-router"
-import { IconGitCompare, IconHome } from "@tabler/icons-react"
+import { IconGitCompare, IconHistory, IconHome } from "@tabler/icons-react"
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
@@ -13,6 +14,7 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar"
 import { FileTree } from "@/components/FileTree"
+import { ThemeToggle } from "@/components/ThemeToggle"
 import { useGitStatus } from "@/hooks/useGitStatus"
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
@@ -41,6 +43,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 Changes
               </SidebarMenuButton>
             </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton render={<Link to="/h" />}>
+                <IconHistory />
+                History
+              </SidebarMenuButton>
+            </SidebarMenuItem>
           </SidebarMenu>
         </SidebarGroup>
         <SidebarGroup className="min-h-0 flex-1">
@@ -50,6 +58,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+      <SidebarFooter>
+        <div className="flex items-center justify-between px-2">
+          <span className="text-xs text-muted-foreground">Theme</span>
+          <ThemeToggle />
+        </div>
+      </SidebarFooter>
       <SidebarRail />
     </Sidebar>
   )

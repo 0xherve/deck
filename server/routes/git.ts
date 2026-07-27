@@ -1,16 +1,15 @@
 import { execFile } from "node:child_process"
 import { promisify } from "node:util"
+import path from "node:path"
 import { Hono } from "hono"
+import { resolveSafePath, PathTraversalError } from "../middleware/security.ts"
 
 const execFileAsync = promisify(execFile)
 const MAX_BUFFER = 10 * 1024 * 1024
 
-function assertSafePaths(paths: string[]) {
-  for (const p of paths) {
-    if (p.includes("..")) {
-      throw new Error(`Invalid path: ${p}`)
-    }
-  }
+function toRepoRelative(rootDir: string, relativePath: string): string {
+  const resolved = resolveSafePath(rootDir, relativePath)
+  return path.relative(rootDir, resolved)
 }
 
 export function createGitRoutes(rootDir: string) {
@@ -18,18 +17,79 @@ export function createGitRoutes(rootDir: string) {
 
   app.get("/api/git-diff", async (c) => {
     const filePath = c.req.query("path")
-    if (filePath?.includes("..")) {
-      return c.json({ error: "Invalid path" }, 400)
-    }
+    const staged = c.req.query("staged") === "1"
 
     try {
-      const args = filePath ? ["diff", "HEAD", "--", filePath] : ["diff", "HEAD"]
+      const safeFilePath = filePath ? toRepoRelative(rootDir, filePath) : undefined
+      const args = [
+        "diff",
+        ...(staged ? ["--cached"] : ["HEAD"]),
+        ...(safeFilePath ? ["--", safeFilePath] : []),
+      ]
       const { stdout } = await execFileAsync("git", args, {
         cwd: rootDir,
         maxBuffer: MAX_BUFFER,
       })
       return c.json({ patch: stdout })
+    } catch (e) {
+      if (e instanceof PathTraversalError) {
+        return c.json({ error: "Invalid path" }, 400)
+      }
+      return c.json({ patch: "" })
+    }
+  })
+
+  app.get("/api/git-log", async (c) => {
+    const limit = Number(c.req.query("limit") ?? "100")
+    const safeLimit = Number.isFinite(limit) && limit > 0 ? Math.min(limit, 500) : 100
+
+    try {
+      const format = "%H%x1f%h%x1f%an%x1f%ad%x1f%s%x1e"
+      const { stdout } = await execFileAsync(
+        "git",
+        ["log", `--max-count=${safeLimit}`, `--pretty=format:${format}`, "--date=iso-strict"],
+        { cwd: rootDir, maxBuffer: MAX_BUFFER }
+      )
+      const commits = stdout
+        .split("\x1e")
+        .map((entry) => entry.trim())
+        .filter(Boolean)
+        .map((entry) => {
+          const [hash, shortHash, author, date, subject] = entry.split("\x1f")
+          return { hash, shortHash, author, date, subject }
+        })
+      return c.json(commits)
     } catch {
+      return c.json([])
+    }
+  })
+
+  app.get("/api/git-show", async (c) => {
+    const hash = c.req.query("hash")
+    const filePath = c.req.query("path")
+
+    if (!hash || !/^[0-9a-fA-F]{4,40}$/.test(hash)) {
+      return c.json({ error: "Invalid hash" }, 400)
+    }
+
+    try {
+      const safeFilePath = filePath ? toRepoRelative(rootDir, filePath) : undefined
+      const args = [
+        "show",
+        hash,
+        "--pretty=format:",
+        "--patch",
+        ...(safeFilePath ? ["--", safeFilePath] : []),
+      ]
+      const { stdout } = await execFileAsync("git", args, {
+        cwd: rootDir,
+        maxBuffer: MAX_BUFFER,
+      })
+      return c.json({ patch: stdout })
+    } catch (e) {
+      if (e instanceof PathTraversalError) {
+        return c.json({ error: "Invalid path" }, 400)
+      }
       return c.json({ patch: "" })
     }
   })
@@ -72,10 +132,13 @@ export function createGitRoutes(rootDir: string) {
     }
 
     try {
-      assertSafePaths(body.paths)
-      await execFileAsync("git", ["add", "--", ...body.paths], { cwd: rootDir, maxBuffer: MAX_BUFFER })
+      const safePaths = body.paths.map((p) => toRepoRelative(rootDir, p))
+      await execFileAsync("git", ["add", "--", ...safePaths], { cwd: rootDir, maxBuffer: MAX_BUFFER })
       return c.json({ ok: true })
     } catch (e) {
+      if (e instanceof PathTraversalError) {
+        return c.json({ error: "Invalid path" }, 400)
+      }
       return c.json({ error: e instanceof Error ? e.message : "Stage failed" }, 500)
     }
   })
@@ -87,10 +150,13 @@ export function createGitRoutes(rootDir: string) {
     }
 
     try {
-      assertSafePaths(body.paths)
-      await execFileAsync("git", ["reset", "HEAD", "--", ...body.paths], { cwd: rootDir, maxBuffer: MAX_BUFFER })
+      const safePaths = body.paths.map((p) => toRepoRelative(rootDir, p))
+      await execFileAsync("git", ["reset", "HEAD", "--", ...safePaths], { cwd: rootDir, maxBuffer: MAX_BUFFER })
       return c.json({ ok: true })
     } catch (e) {
+      if (e instanceof PathTraversalError) {
+        return c.json({ error: "Invalid path" }, 400)
+      }
       return c.json({ error: e instanceof Error ? e.message : "Unstage failed" }, 500)
     }
   })
@@ -171,7 +237,7 @@ export function createGitRoutes(rootDir: string) {
     }
 
     try {
-      await execFileAsync("git", ["checkout", "-b", body.name.trim()], {
+      await execFileAsync("git", ["checkout", "-b", body.name.trim(), "--"], {
         cwd: rootDir,
         maxBuffer: MAX_BUFFER,
       })
@@ -189,7 +255,15 @@ export function createGitRoutes(rootDir: string) {
     }
 
     try {
-      await execFileAsync("git", ["checkout", body.branch.trim()], {
+      const { stdout: status } = await execFileAsync("git", ["status", "--porcelain"], {
+        cwd: rootDir,
+        maxBuffer: MAX_BUFFER,
+      })
+      if (status.trim().length > 0) {
+        return c.json({ error: "Working tree has uncommitted changes" }, 409)
+      }
+
+      await execFileAsync("git", ["checkout", body.branch.trim(), "--"], {
         cwd: rootDir,
         maxBuffer: MAX_BUFFER,
       })

@@ -1,17 +1,13 @@
-import { useParams, useSearch } from "@tanstack/react-router"
+import { useParams } from "@tanstack/react-router"
 import { DiffViewer } from "@/components/DiffViewer"
 import { Button } from "@/components/ui/button"
 import { IconRefresh } from "@tabler/icons-react"
 import { useResource } from "@/hooks/useResource"
 
-export function DiffViewRoute() {
+export function CommitDiffRoute() {
   const params = useParams({ strict: false })
-  const search = useSearch({ strict: false }) as Record<string, string>
-  const filePath = (params as Record<string, string>)._splat ?? ""
-  const staged = search.staged === "1"
-  const url = filePath
-    ? `/api/git-diff?path=${encodeURIComponent(filePath)}${staged ? "&staged=1" : ""}`
-    : "/api/git-diff"
+  const hash = (params as Record<string, string>)._splat ?? ""
+  const url = hash ? `/api/git-show?hash=${encodeURIComponent(hash)}` : null
   const {
     data: patch,
     loading,
@@ -23,13 +19,8 @@ export function DiffViewRoute() {
     <div className="flex h-full flex-col">
       <div className="flex items-center justify-between border-b border-border px-4 py-2">
         <div className="flex items-center gap-2 text-sm">
-          <span className="font-medium">Git Diff</span>
-          <span className="text-muted-foreground">{filePath || "HEAD"}</span>
-          {filePath && (
-            <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-              {staged ? "Staged" : "Unstaged"}
-            </span>
-          )}
+          <span className="font-medium">Commit</span>
+          <span className="font-mono text-muted-foreground">{hash.slice(0, 12)}</span>
         </div>
         <Button variant="ghost" size="icon-sm" onClick={fetchDiff} disabled={loading}>
           <IconRefresh size={14} className={loading ? "animate-spin" : ""} />

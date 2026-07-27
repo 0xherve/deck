@@ -1,8 +1,8 @@
 import { Button } from "@/components/ui/button"
-import { IconEye, IconPencil, IconCode } from "@tabler/icons-react"
+import { IconEye, IconCode } from "@tabler/icons-react"
 import { cn } from "@/lib/utils"
 
-export type EditorMode = "read" | "wysiwyg" | "source"
+export type EditorMode = "read" | "source"
 
 interface EditorToolbarProps {
   filePath: string
@@ -14,7 +14,6 @@ interface EditorToolbarProps {
 export function EditorToolbar({ filePath, mode, onModeChange, dirty }: EditorToolbarProps) {
   const modes: { value: EditorMode; label: string; icon: React.ReactNode }[] = [
     { value: "read", label: "Read", icon: <IconEye size={14} /> },
-    { value: "wysiwyg", label: "Edit", icon: <IconPencil size={14} /> },
     { value: "source", label: "Source", icon: <IconCode size={14} /> },
   ]
 

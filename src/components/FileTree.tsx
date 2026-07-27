@@ -1,36 +1,41 @@
-import { useEffect, useState, useRef, useCallback, useMemo } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useNavigate, useParams } from "@tanstack/react-router"
-import { useVirtualizer } from "@tanstack/react-virtual"
-import { IconChevronRight } from "@tabler/icons-react"
-import { cn } from "@/lib/utils"
-import { FileTypeIcon } from "@/lib/file-icons"
+import { FileTree as PierreFileTree, useFileTree } from "@pierre/trees/react"
+import { themeToTreeStyles, type TreeThemeStyles } from "@pierre/trees"
+import type { GitStatus, GitStatusEntry as PierreGitStatusEntry } from "@pierre/trees"
+import { resolveTheme } from "@pierre/diffs"
+import { useTheme } from "@/components/theme-provider"
 import type { GitStatusEntry } from "@/hooks/useGitStatus"
+import { useWatch } from "@/hooks/useWatch"
 
-type TreeEntry = {
+interface TreeEntry {
   name: string
-  type: "file" | "directory"
   path: string
-  children?: TreeEntry[]
+  type: "file" | "directory"
 }
 
-type FlatRow = {
-  entry: TreeEntry
-  depth: number
+function toModelPath(entry: TreeEntry): string {
+  return entry.type === "directory" ? `${entry.path}/` : entry.path
 }
 
-function flattenTree(
-  entries: TreeEntry[],
-  expanded: Set<string>,
-  depth: number = 0
-): FlatRow[] {
-  const rows: FlatRow[] = []
-  for (const entry of entries) {
-    rows.push({ entry, depth })
-    if (entry.type === "directory" && expanded.has(entry.path) && entry.children) {
-      rows.push(...flattenTree(entry.children, expanded, depth + 1))
-    }
+async function fetchDir(dirPath: string): Promise<TreeEntry[]> {
+  const url = dirPath ? `/api/tree?path=${encodeURIComponent(dirPath)}` : "/api/tree"
+  const res = await fetch(url)
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  return res.json()
+}
+
+function mapGitStatus(status: GitStatusEntry["status"]): GitStatus {
+  switch (status) {
+    case "A":
+      return "added"
+    case "D":
+      return "deleted"
+    case "U":
+      return "untracked"
+    default:
+      return "modified"
   }
-  return rows
 }
 
 interface FileTreeProps {
@@ -38,130 +43,107 @@ interface FileTreeProps {
 }
 
 export function FileTree({ gitStatus = [] }: FileTreeProps) {
-  const [tree, setTree] = useState<TreeEntry[]>([])
-  const [error, setError] = useState<string | null>(null)
-  const [expanded, setExpanded] = useState<Set<string>>(new Set())
-  const parentRef = useRef<HTMLDivElement>(null)
   const navigate = useNavigate()
   const params = useParams({ strict: false }) as Record<string, string>
   const activePath = params._splat ?? ""
+  const { theme } = useTheme()
+  const isDark =
+    theme === "dark" ||
+    (theme === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches)
+  const [treeStyle, setTreeStyle] = useState<TreeThemeStyles | undefined>(undefined)
 
-  const statusMap = useMemo(() => {
-    const map = new Map<string, string>()
-    for (const f of gitStatus) map.set(f.path, f.status)
-    return map
-  }, [gitStatus])
+  const loadedDirs = useRef<Set<string>>(new Set())
+  const loadingDirs = useRef<Set<string>>(new Set())
 
-  const flatRows = useMemo(() => flattenTree(tree, expanded), [tree, expanded])
+  const pierreGitStatus = useMemo<PierreGitStatusEntry[]>(
+    () => gitStatus.map((f) => ({ path: f.path, status: mapGitStatus(f.status) })),
+    [gitStatus]
+  )
 
-  const virtualizer = useVirtualizer({
-    count: flatRows.length,
-    getScrollElement: () => parentRef.current,
-    estimateSize: () => 28,
-    overscan: 20,
+  const { model } = useFileTree({
+    paths: [],
+    initialExpansion: "closed",
+    search: true,
+    gitStatus: pierreGitStatus,
+    onSelectionChange: (selectedPaths) => {
+      const path = selectedPaths[0]
+      if (!path) return
+      const item = model.getItem(path)
+      if (item && !item.isDirectory()) {
+        navigate({ to: "/v/$", params: { _splat: path } })
+      }
+    },
   })
 
-  const toggleDir = useCallback((path: string) => {
-    setExpanded((prev) => {
-      const next = new Set(prev)
-      if (next.has(path)) next.delete(path)
-      else next.add(path)
-      return next
-    })
-  }, [])
+  const loadDir = useCallback(async (dirPath: string) => {
+    if (loadedDirs.current.has(dirPath) || loadingDirs.current.has(dirPath)) return
+    loadingDirs.current.add(dirPath)
+    try {
+      const entries = await fetchDir(dirPath)
+      loadedDirs.current.add(dirPath)
+      model.batch(entries.map((entry) => ({ path: toModelPath(entry), type: "add" as const })))
+    } catch {
+      // leave unloaded; a future expand attempt can retry
+    } finally {
+      loadingDirs.current.delete(dirPath)
+    }
+  }, [model])
 
   useEffect(() => {
-    const fetchTree = () =>
-      fetch("/api/tree")
-        .then((res) => {
-          if (!res.ok) throw new Error(`HTTP ${res.status}`)
-          return res.json()
-        })
-        .then((data) => setTree(data))
-        .catch((err) => setError(err.message))
+    loadDir("")
+  }, [loadDir])
 
-    fetchTree()
+  useEffect(() => {
+    const unsubscribe = model.subscribe(() => {
+      const total = model.getVisibleCount()
+      const rows = model.getVisibleRows(0, total)
+      for (const row of rows) {
+        if (row.kind === "directory" && row.isExpanded) {
+          loadDir(row.path)
+        }
+      }
+    })
+    return unsubscribe
+  }, [model, loadDir])
 
-    const es = new EventSource("/api/watch")
-    es.onmessage = () => { fetchTree() }
-    es.onerror = () => { es.close() }
+  useEffect(() => {
+    model.setGitStatus(pierreGitStatus)
+  }, [model, pierreGitStatus])
 
-    return () => { es.close() }
-  }, [])
+  useWatch(
+    useCallback(
+      (e) => {
+        // Only structural changes (create/delete/rename) affect the tree
+        // shape; plain content edits don't need a tree refresh.
+        if (e.event !== "rename") return
+        const dirPath = e.path.includes("/") ? e.path.slice(0, e.path.lastIndexOf("/")) : ""
+        loadedDirs.current.delete(dirPath)
+        loadDir(dirPath)
+      },
+      [loadDir]
+    )
+  )
 
-  if (error) {
-    return <p className="px-3 py-2 text-xs text-destructive">Failed to load file tree</p>
-  }
+  useEffect(() => {
+    if (!activePath) return
+    model.focusPath(activePath)
+    model.scrollToPath(activePath, { focus: false })
+  }, [model, activePath])
 
-  if (tree.length === 0) {
-    return <p className="px-3 py-2 text-xs text-muted-foreground">Loading...</p>
-  }
+  useEffect(() => {
+    let cancelled = false
+    resolveTheme(isDark ? "github-dark" : "github-light").then((resolved) => {
+      if (cancelled) return
+      setTreeStyle(themeToTreeStyles(resolved))
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [isDark])
 
   return (
-    <div ref={parentRef} className="h-full overflow-auto px-2">
-      <div style={{ height: `${virtualizer.getTotalSize()}px`, position: "relative" }}>
-        {virtualizer.getVirtualItems().map((virtualRow) => {
-          const { entry, depth } = flatRows[virtualRow.index]
-          const isDir = entry.type === "directory"
-          const status = statusMap.get(entry.path)
-
-          if (isDir) {
-            const isExpanded = expanded.has(entry.path)
-            return (
-              <button
-                key={entry.path}
-                onClick={() => toggleDir(entry.path)}
-                className={cn(
-                  "absolute right-2 flex w-[calc(100%-8px)] items-center gap-2 rounded-sm py-1 text-sm transition-colors hover:bg-sidebar-accent",
-                  depth === 0 && isExpanded && "bg-sidebar-accent text-foreground"
-                )}
-                style={{
-                  top: `${virtualRow.start}px`,
-                  height: "28px",
-                  paddingLeft: `${depth * 14 + 6}px`,
-                }}
-              >
-                <IconChevronRight
-                  size={12}
-                  className={cn(
-                    "shrink-0 text-muted-foreground/50 transition-transform duration-150",
-                    isExpanded && "rotate-90"
-                  )}
-                />
-                <FileTypeIcon name={entry.name} type="directory" open={isExpanded} size={18} />
-                <span className="truncate text-muted-foreground">{entry.name}</span>
-              </button>
-            )
-          }
-
-          const isActive = entry.path === activePath
-
-          return (
-            <button
-              key={entry.path}
-              onClick={() => navigate({ to: "/v/$", params: { _splat: entry.path } })}
-              className={cn(
-                "absolute right-2 flex items-center gap-2 rounded-sm py-1 text-sm transition-colors",
-                isActive
-                  ? "bg-sidebar-accent text-foreground"
-                  : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
-              )}
-              style={{
-                top: `${virtualRow.start}px`,
-                height: "28px",
-                left: `${depth * 14 + 22}px`,
-                right: "8px",
-              }}
-            >
-              <FileTypeIcon name={entry.name} type="file" size={18} />
-              <span className="truncate flex-1 text-left">{entry.name}</span>
-              {status && (
-                <span className="shrink-0 text-[10px] font-medium text-muted-foreground">{status}</span>
-              )}
-            </button>
-          )
-        })}
-      </div>
+    <div className="h-full">
+      <PierreFileTree model={model} style={{ height: "100%", ...treeStyle }} />
     </div>
   )
 }
