@@ -9,11 +9,12 @@ export function CommitDiffRoute() {
   const hash = (params as Record<string, string>)._splat ?? ""
   const url = hash ? `/api/git-show?hash=${encodeURIComponent(hash)}` : null
   const {
-    data: patch,
+    data,
     loading,
     error,
     refetch: fetchDiff,
-  } = useResource<string>(url, { parse: async (res) => (await res.json()).patch })
+  } = useResource<{ patch: string }>(url, { as: "json" })
+  const patch = data?.patch ?? null
 
   return (
     <div className="flex h-full flex-col">

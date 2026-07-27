@@ -1,4 +1,5 @@
 import { useRef, useCallback, useEffect } from "react"
+import { readBuffer, writeBuffer, saveFile } from "@/lib/file-buffer"
 
 const DEBOUNCE_MS = 2500
 
@@ -8,65 +9,51 @@ export function useAutoSave(
 ) {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const lastSavedRef = useRef<string | null>(null)
-
-  const bufferKey = filePath ? `deck:buffer:${filePath}` : null
+  const bufferedRef = useRef<string | null>(null)
 
   const save = useCallback(
     async (content: string) => {
       if (!filePath) return
       try {
-        await fetch("/api/save", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ path: filePath, content }),
-        })
+        await saveFile(filePath, content)
         lastSavedRef.current = content
-        if (bufferKey) sessionStorage.removeItem(bufferKey)
+        bufferedRef.current = null
         onDirtyChange(false)
       } catch (e) {
         console.error("Auto-save failed:", e)
       }
     },
-    [filePath, bufferKey, onDirtyChange]
+    [filePath, onDirtyChange]
   )
 
   const bufferChange = useCallback(
     (content: string) => {
-      if (!bufferKey) return
+      if (!filePath) return
 
-      sessionStorage.setItem(bufferKey, content)
+      writeBuffer(filePath, content)
+      bufferedRef.current = content
       onDirtyChange(true)
 
       if (timerRef.current) clearTimeout(timerRef.current)
       timerRef.current = setTimeout(() => save(content), DEBOUNCE_MS)
     },
-    [bufferKey, save, onDirtyChange]
+    [filePath, save, onDirtyChange]
   )
 
   const getBufferedContent = useCallback((): string | null => {
-    if (!bufferKey) return null
-    return sessionStorage.getItem(bufferKey)
-  }, [bufferKey])
+    return filePath ? readBuffer(filePath) : null
+  }, [filePath])
 
   useEffect(() => {
     return () => {
-      if (timerRef.current) {
-        clearTimeout(timerRef.current)
-        if (bufferKey) {
-          const buffered = sessionStorage.getItem(bufferKey)
-          if (buffered && buffered !== lastSavedRef.current) {
-            fetch("/api/save", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ path: filePath, content: buffered }),
-            })
-              .then(() => sessionStorage.removeItem(bufferKey))
-              .catch(() => {})
-          }
-        }
+      if (!timerRef.current) return
+      clearTimeout(timerRef.current)
+      const buffered = bufferedRef.current
+      if (filePath && buffered !== null && buffered !== lastSavedRef.current) {
+        saveFile(filePath, buffered).catch(() => {})
       }
     }
-  }, [filePath, bufferKey])
+  }, [filePath])
 
   return { bufferChange, getBufferedContent, saveNow: save }
 }

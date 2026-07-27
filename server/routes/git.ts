@@ -211,15 +211,16 @@ export function createGitRoutes(rootDir: string) {
 
   app.get("/api/git-branches", async (c) => {
     try {
-      const { stdout: current } = await execFileAsync("git", ["branch", "--show-current"], {
-        cwd: rootDir,
-        maxBuffer: MAX_BUFFER,
-      })
-      const { stdout: list } = await execFileAsync(
-        "git",
-        ["branch", "--format=%(refname:short)"],
-        { cwd: rootDir, maxBuffer: MAX_BUFFER }
-      )
+      const [{ stdout: current }, { stdout: list }] = await Promise.all([
+        execFileAsync("git", ["branch", "--show-current"], {
+          cwd: rootDir,
+          maxBuffer: MAX_BUFFER,
+        }),
+        execFileAsync("git", ["branch", "--format=%(refname:short)"], {
+          cwd: rootDir,
+          maxBuffer: MAX_BUFFER,
+        }),
+      ])
       const branches = list
         .split("\n")
         .map((b) => b.trim())

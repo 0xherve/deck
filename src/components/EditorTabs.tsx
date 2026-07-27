@@ -2,6 +2,7 @@ import { useTabs } from "@/stores/tabs"
 import { useNavigate } from "@tanstack/react-router"
 import { IconX, IconGitCompare } from "@tabler/icons-react"
 import { Button } from "@/components/ui/button"
+import { ThemeToggle } from "@/components/ThemeToggle"
 import { cn } from "@/lib/utils"
 import { useSCPanel } from "@/routes/__root"
 
@@ -62,15 +63,18 @@ export function EditorTabs() {
         )
       })}
       </div>
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={toggle}
-        className="shrink-0 gap-1.5 rounded-none border-l border-border ml-auto mr-1"
-      >
-        <IconGitCompare size={14} />
-        Changes
-      </Button>
+      <div className="ml-auto flex shrink-0 items-center pr-1">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={toggle}
+          className="gap-1.5 rounded-none border-l border-border"
+        >
+          <IconGitCompare size={14} />
+          Changes
+        </Button>
+        <ThemeToggle />
+      </div>
     </div>
   )
 }

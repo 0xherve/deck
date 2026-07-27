@@ -14,6 +14,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { useSCPanel } from "@/routes/__root"
+import { discardBuffer } from "@/lib/file-buffer"
 import { useTabs } from "@/stores/tabs"
 
 type GitFile = { path: string; status: "M" | "A" | "D" | "U"; staged: boolean }
@@ -77,21 +78,27 @@ export function SourceControlPanel() {
   const switchBlocked = hasBufferedEdits || hasWorkingTreeChanges
 
   const reconcileTabsAfterSwitch = useCallback(async () => {
-    const openTabs = state.tabs
-    for (const tab of openTabs) {
-      const res = await fetch(`/api/file-meta?path=${encodeURIComponent(tab.path)}`)
-      sessionStorage.removeItem(`deck:buffer:${tab.path}`)
-      if (!res.ok) {
-        dispatch({ type: "CLOSE_TAB", path: tab.path })
-        if (tab.path === state.activeTab) {
-          navigate({ to: "/" })
-        }
+    const survivals = await Promise.all(
+      state.tabs.map(async (tab) => {
+        const res = await fetch(`/api/file-meta?path=${encodeURIComponent(tab.path)}`)
+        discardBuffer(tab.path)
+        return { path: tab.path, exists: res.ok }
+      })
+    )
+
+    for (const { path, exists } of survivals) {
+      if (exists) {
+        dispatch({ type: "SET_DIRTY", path, dirty: false })
       } else {
-        dispatch({ type: "SET_DIRTY", path: tab.path, dirty: false })
+        dispatch({ type: "CLOSE_TAB", path })
       }
     }
-    if (state.activeTab) {
+
+    const activeSurvives = survivals.some((s) => s.path === state.activeTab && s.exists)
+    if (activeSurvives && state.activeTab) {
       navigate({ to: "/v/$", params: { _splat: state.activeTab } })
+    } else {
+      navigate({ to: "/" })
     }
   }, [state.tabs, state.activeTab, dispatch, navigate])
 

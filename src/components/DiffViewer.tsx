@@ -10,8 +10,7 @@ interface DiffViewerProps {
 
 export function DiffViewer({ patch }: DiffViewerProps) {
   const [diffStyle, setDiffStyle] = useState<"unified" | "split">("unified")
-  const { theme } = useTheme()
-  const themeType = theme === "system" ? "system" : theme
+  const { resolvedTheme } = useTheme()
 
   if (!patch.trim()) {
     return (
@@ -51,7 +50,7 @@ export function DiffViewer({ patch }: DiffViewerProps) {
           options={{
             diffStyle,
             theme: { dark: "github-dark", light: "github-light" },
-            themeType,
+            themeType: resolvedTheme,
           }}
         />
       </div>

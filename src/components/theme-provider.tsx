@@ -13,6 +13,7 @@ type ThemeProviderProps = {
 
 type ThemeProviderState = {
   theme: Theme
+  resolvedTheme: ResolvedTheme
   setTheme: (theme: Theme) => void
 }
 
@@ -120,6 +121,9 @@ export function ThemeProvider({
     [disableTransitionOnChange]
   )
 
+  const [systemTheme, setSystemTheme] = React.useState<ResolvedTheme>(getSystemTheme)
+  const resolvedTheme = theme === "system" ? systemTheme : theme
+
   React.useEffect(() => {
     applyTheme(theme)
 
@@ -129,6 +133,7 @@ export function ThemeProvider({
 
     const mediaQuery = window.matchMedia(COLOR_SCHEME_QUERY)
     const handleChange = () => {
+      setSystemTheme(getSystemTheme())
       applyTheme("system")
     }
 
@@ -207,9 +212,10 @@ export function ThemeProvider({
   const value = React.useMemo(
     () => ({
       theme,
+      resolvedTheme,
       setTheme,
     }),
-    [theme, setTheme]
+    [theme, resolvedTheme, setTheme]
   )
 
   return (

@@ -5,25 +5,34 @@ interface MermaidDiagramProps {
   code: string
 }
 
+type Mermaid = typeof import("mermaid").default
+
+let mermaidPromise: Promise<Mermaid> | null = null
+let configuredTheme: string | null = null
+
+async function getMermaid(theme: "dark" | "default"): Promise<Mermaid> {
+  if (!mermaidPromise) {
+    mermaidPromise = import("mermaid").then(({ default: mermaid }) => mermaid)
+  }
+  const mermaid = await mermaidPromise
+  if (configuredTheme !== theme) {
+    mermaid.initialize({ startOnLoad: false, theme, securityLevel: "strict" })
+    configuredTheme = theme
+  }
+  return mermaid
+}
+
 export function MermaidDiagram({ code }: MermaidDiagramProps) {
   const id = useId().replace(/:/g, "-")
   const containerRef = useRef<HTMLDivElement>(null)
   const [error, setError] = useState<string | null>(null)
-  const { theme } = useTheme()
-  const isDark =
-    theme === "dark" ||
-    (theme === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches)
+  const { resolvedTheme } = useTheme()
 
   useEffect(() => {
     let cancelled = false
 
-    import("mermaid").then(async ({ default: mermaid }) => {
+    getMermaid(resolvedTheme === "dark" ? "dark" : "default").then(async (mermaid) => {
       if (cancelled) return
-      mermaid.initialize({
-        startOnLoad: false,
-        theme: isDark ? "dark" : "default",
-        securityLevel: "strict",
-      })
       try {
         const { svg } = await mermaid.render(`mermaid-${id}`, code)
         if (!cancelled && containerRef.current) {
@@ -37,7 +46,7 @@ export function MermaidDiagram({ code }: MermaidDiagramProps) {
     return () => {
       cancelled = true
     }
-  }, [code, id, isDark])
+  }, [code, id, resolvedTheme])
 
   if (error) {
     return (

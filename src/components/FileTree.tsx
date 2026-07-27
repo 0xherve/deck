@@ -5,6 +5,7 @@ import { themeToTreeStyles, type TreeThemeStyles } from "@pierre/trees"
 import type { GitStatus, GitStatusEntry as PierreGitStatusEntry } from "@pierre/trees"
 import { resolveTheme } from "@pierre/diffs"
 import { useTheme } from "@/components/theme-provider"
+import { tokensFor } from "@/lib/theme-tokens"
 import type { GitStatusEntry } from "@/hooks/useGitStatus"
 import { useWatch } from "@/hooks/useWatch"
 
@@ -40,16 +41,16 @@ function mapGitStatus(status: GitStatusEntry["status"]): GitStatus {
 
 interface FileTreeProps {
   gitStatus?: GitStatusEntry[]
+  /** Filter query, owned by the sidebar so the input can be styled as our own. */
+  search?: string
 }
 
-export function FileTree({ gitStatus = [] }: FileTreeProps) {
+export function FileTree({ gitStatus = [], search = "" }: FileTreeProps) {
   const navigate = useNavigate()
   const params = useParams({ strict: false }) as Record<string, string>
   const activePath = params._splat ?? ""
-  const { theme } = useTheme()
-  const isDark =
-    theme === "dark" ||
-    (theme === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches)
+  const { resolvedTheme } = useTheme()
+  const shikiTheme = tokensFor(resolvedTheme).shikiTheme
   const [treeStyle, setTreeStyle] = useState<TreeThemeStyles | undefined>(undefined)
 
   const loadedDirs = useRef<Set<string>>(new Set())
@@ -63,7 +64,10 @@ export function FileTree({ gitStatus = [] }: FileTreeProps) {
   const { model } = useFileTree({
     paths: [],
     initialExpansion: "closed",
-    search: true,
+    // The tree's built-in search bar is suppressed; the sidebar renders its own
+    // input and drives the model through setSearch.
+    search: false,
+    fileTreeSearchMode: "hide-non-matches",
     gitStatus: pierreGitStatus,
     onSelectionChange: (selectedPaths) => {
       const path = selectedPaths[0]
@@ -110,6 +114,10 @@ export function FileTree({ gitStatus = [] }: FileTreeProps) {
     model.setGitStatus(pierreGitStatus)
   }, [model, pierreGitStatus])
 
+  useEffect(() => {
+    model.setSearch(search.trim() || null)
+  }, [model, search])
+
   useWatch(
     useCallback(
       (e) => {
@@ -132,18 +140,41 @@ export function FileTree({ gitStatus = [] }: FileTreeProps) {
 
   useEffect(() => {
     let cancelled = false
-    resolveTheme(isDark ? "github-dark" : "github-light").then((resolved) => {
+    resolveTheme(shikiTheme).then((resolved) => {
       if (cancelled) return
       setTreeStyle(themeToTreeStyles(resolved))
     })
     return () => {
       cancelled = true
     }
-  }, [isDark])
+  }, [shikiTheme])
+
+  // The tree ships its own shiki-derived palette; the -override vars pin its
+  // surface colors to deck's so there is a single visual system.
+  const deckOverrides = {
+    // themeToTreeStyles emits literal background/color/border declarations from
+    // the shiki theme, which outrank the --*-override vars below. Neutralize
+    // them so the tree paints on the sidebar's own surface.
+    backgroundColor: "transparent",
+    color: "var(--color-sidebar-foreground)",
+    borderColor: "transparent",
+    "--trees-bg-override": "var(--color-sidebar)",
+    "--trees-bg-muted-override": "var(--color-sidebar-accent)",
+    "--trees-fg-override": "var(--color-sidebar-foreground)",
+    "--trees-fg-muted-override": "var(--color-muted-foreground)",
+    "--trees-accent-override": "var(--color-primary)",
+    // The tree is the sidebar's main surface, not a card inside it: drop its
+    // own frame so it reads as one panel rather than a box within a box.
+    "--trees-border-color-override": "transparent",
+    "--trees-border-radius-override": "0px",
+  } as React.CSSProperties
 
   return (
     <div className="h-full">
-      <PierreFileTree model={model} style={{ height: "100%", ...treeStyle }} />
+      <PierreFileTree
+        model={model}
+        style={{ height: "100%", ...treeStyle, ...deckOverrides }}
+      />
     </div>
   )
 }

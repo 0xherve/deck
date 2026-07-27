@@ -1,4 +1,5 @@
 import { createContext, useContext } from "react"
+import { discardBuffer } from "@/lib/file-buffer"
 
 export interface Tab {
   path: string
@@ -35,7 +36,7 @@ export function tabsReducer(state: TabsState, action: TabsAction): TabsState {
         const idx = state.tabs.findIndex((t) => t.path === action.path)
         activeTab = filtered[Math.min(idx, filtered.length - 1)]?.path ?? null
       }
-      sessionStorage.removeItem(`deck:buffer:${action.path}`)
+      discardBuffer(action.path)
       return { tabs: filtered, activeTab }
     }
     case "SET_ACTIVE":

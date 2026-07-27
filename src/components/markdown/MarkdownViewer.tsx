@@ -1,10 +1,12 @@
-import { useCallback, type ComponentPropsWithoutRef } from "react"
+import { useCallback, useMemo, type ComponentPropsWithoutRef } from "react"
 import ReactMarkdown, { type Components } from "react-markdown"
 import remarkGfm from "remark-gfm"
 import rehypeSlug from "rehype-slug"
 import { resolveRef } from "@/lib/resolveRef"
+import { taskIndexAtLine } from "@/lib/toggleCheckbox"
 import { CodeBlock } from "@/components/markdown/CodeBlock"
 import { Heading } from "@/components/markdown/Heading"
+import { MermaidDiagram } from "@/components/markdown/MermaidDiagram"
 
 interface MarkdownViewerProps {
   source: string
@@ -13,15 +15,15 @@ interface MarkdownViewerProps {
   onToggleTask?: (index: number) => void
 }
 
-function extractText(node: React.ReactNode): string {
-  if (typeof node === "string") return node
-  if (typeof node === "number") return String(node)
-  if (Array.isArray(node)) return node.map(extractText).join("")
-  if (node && typeof node === "object" && "props" in node) {
-    return extractText((node as { props: { children?: React.ReactNode } }).props.children)
-  }
-  return ""
-}
+const remarkPlugins = [remarkGfm]
+const rehypePlugins = [rehypeSlug]
+
+const headingComponents = Object.fromEntries(
+  ([1, 2, 3, 4, 5, 6] as const).map((level) => [
+    `h${level}`,
+    (props: ComponentPropsWithoutRef<"h1">) => <Heading level={level} {...props} />,
+  ])
+) as Components
 
 export function MarkdownViewer({ source, baseDir, navigate, onToggleTask }: MarkdownViewerProps) {
   const handleAnchorClick = useCallback(
@@ -39,16 +41,9 @@ export function MarkdownViewer({ source, baseDir, navigate, onToggleTask }: Mark
     [baseDir, navigate]
   )
 
-  function buildComponents(): Components {
-    const counter = { taskIndex: 0 }
-
-    return {
-      h1: (props) => <Heading level={1} {...props} />,
-      h2: (props) => <Heading level={2} {...props} />,
-      h3: (props) => <Heading level={3} {...props} />,
-      h4: (props) => <Heading level={4} {...props} />,
-      h5: (props) => <Heading level={5} {...props} />,
-      h6: (props) => <Heading level={6} {...props} />,
+  const components = useMemo<Components>(
+    () => ({
+      ...headingComponents,
       a: ({ href, children, ...rest }) => (
         <a href={href} onClick={(e) => handleAnchorClick(e, href ?? "")} {...rest}>
           {children}
@@ -58,9 +53,10 @@ export function MarkdownViewer({ source, baseDir, navigate, onToggleTask }: Mark
         const resolved = resolveRef(String(src ?? ""), baseDir, true)
         return <img src={resolved.href} alt={alt} {...rest} />
       },
-      li: ({ className, children, ...rest }: ComponentPropsWithoutRef<"li">) => {
+      li: ({ className, children, node, ...rest }) => {
         const isTask = typeof className === "string" && className.includes("task-list-item")
-        if (!isTask) {
+        const line = node?.position?.start.line
+        if (!isTask || line === undefined) {
           return (
             <li className={className} {...rest}>
               {children}
@@ -68,12 +64,9 @@ export function MarkdownViewer({ source, baseDir, navigate, onToggleTask }: Mark
           )
         }
 
-        const index = counter.taskIndex
-        counter.taskIndex += 1
-
         return (
           <li className={`${className ?? ""} list-none -ml-5`} {...rest}>
-            <TaskItem index={index} onToggle={onToggleTask}>
+            <TaskItem index={taskIndexAtLine(source, line)} onToggle={onToggleTask}>
               {children}
             </TaskItem>
           </li>
@@ -81,26 +74,28 @@ export function MarkdownViewer({ source, baseDir, navigate, onToggleTask }: Mark
       },
       code: ({ className, children, ...rest }) => {
         const match = /language-(\w+)/.exec(className ?? "")
-        const isBlock = Boolean(match)
-        if (!isBlock) {
+        if (!match) {
           return (
             <code className={className} {...rest}>
               {children}
             </code>
           )
         }
-        return <CodeBlock code={extractText(children).replace(/\n$/, "")} lang={match![1]} />
+        const text = String(children).replace(/\n$/, "")
+        if (match[1] === "mermaid") return <MermaidDiagram code={text} />
+        return <CodeBlock code={text} lang={match[1]} />
       },
       pre: ({ children }) => <>{children}</>,
-    }
-  }
+    }),
+    [baseDir, handleAnchorClick, onToggleTask, source]
+  )
 
   return (
     <div className="prose dark:prose-invert mx-auto max-w-[80vw] px-8 py-6">
       <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
-        rehypePlugins={[rehypeSlug]}
-        components={buildComponents()}
+        remarkPlugins={remarkPlugins}
+        rehypePlugins={rehypePlugins}
+        components={components}
       >
         {source}
       </ReactMarkdown>
@@ -115,7 +110,6 @@ interface TaskItemProps {
 }
 
 function TaskItem({ index, onToggle, children }: TaskItemProps) {
-  // react-markdown renders GFM task items as [<input type=checkbox>, " ", ...rest]
   const items = Array.isArray(children) ? children : [children]
   const [checkbox, ...rest] = items
   const checked =

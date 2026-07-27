@@ -3,8 +3,7 @@ import { EditorView, keymap, lineNumbers, highlightActiveLine, highlightActiveLi
 import { EditorState, Compartment } from "@codemirror/state"
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands"
 import { searchKeymap } from "@codemirror/search"
-import { syntaxHighlighting, defaultHighlightStyle } from "@codemirror/language"
-import { oneDark } from "@codemirror/theme-one-dark"
+import { codeMirrorTheme } from "@/lib/codeMirrorTheme"
 import { extOf, loadLanguage } from "@/lib/codeMirrorLanguage"
 import { useTheme } from "@/components/theme-provider"
 
@@ -16,7 +15,7 @@ interface SourceEditorProps {
 }
 
 const baseTheme = EditorView.theme({
-  "&": { height: "100%", backgroundColor: "transparent" },
+  "&": { height: "100%" },
   ".cm-scroller": { fontFamily: "var(--font-mono)", fontSize: "0.875rem" },
   ".cm-content": { padding: "1.5rem" },
   "&.cm-editor.cm-focused": { outline: "none" },
@@ -29,10 +28,7 @@ export function SourceEditor({ content, editable, onChange, filePath }: SourceEd
   const languageCompartment = useRef(new Compartment())
   const editableCompartment = useRef(new Compartment())
   const themeCompartment = useRef(new Compartment())
-  const { theme } = useTheme()
-  const isDark =
-    theme === "dark" ||
-    (theme === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches)
+  const { resolvedTheme } = useTheme()
 
   useEffect(() => {
     onChangeRef.current = onChange
@@ -50,8 +46,7 @@ export function SourceEditor({ content, editable, onChange, filePath }: SourceEd
           highlightActiveLineGutter(),
           history(),
           keymap.of([...defaultKeymap, ...historyKeymap, ...searchKeymap]),
-          syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
-          themeCompartment.current.of(isDark ? oneDark : []),
+          themeCompartment.current.of(codeMirrorTheme(resolvedTheme)),
           baseTheme,
           languageCompartment.current.of([]),
           editableCompartment.current.of(EditorView.editable.of(editable)),
@@ -75,9 +70,9 @@ export function SourceEditor({ content, editable, onChange, filePath }: SourceEd
 
   useEffect(() => {
     viewRef.current?.dispatch({
-      effects: themeCompartment.current.reconfigure(isDark ? oneDark : []),
+      effects: themeCompartment.current.reconfigure(codeMirrorTheme(resolvedTheme)),
     })
-  }, [isDark])
+  }, [resolvedTheme])
 
   useEffect(() => {
     const view = viewRef.current

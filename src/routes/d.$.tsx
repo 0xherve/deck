@@ -13,11 +13,12 @@ export function DiffViewRoute() {
     ? `/api/git-diff?path=${encodeURIComponent(filePath)}${staged ? "&staged=1" : ""}`
     : "/api/git-diff"
   const {
-    data: patch,
+    data,
     loading,
     error,
     refetch: fetchDiff,
-  } = useResource<string>(url, { parse: async (res) => (await res.json()).patch })
+  } = useResource<{ patch: string }>(url, { as: "json" })
+  const patch = data?.patch ?? null
 
   return (
     <div className="flex h-full flex-col">

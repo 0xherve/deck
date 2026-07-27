@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from "react"
 
-interface UseResourceOptions<T> {
-  parse?: (res: Response) => Promise<T>
+type ResponseFormat = "text" | "json"
+
+interface UseResourceOptions {
+  as?: ResponseFormat
   loadingDelayMs?: number
 }
 
@@ -12,13 +14,10 @@ interface UseResourceResult<T> {
   refetch: () => void
 }
 
-const defaultParse = async (res: Response) => (await res.text()) as unknown
-
 export function useResource<T>(
   url: string | null,
-  options: UseResourceOptions<T> = {}
+  { as = "text", loadingDelayMs = 0 }: UseResourceOptions = {}
 ): UseResourceResult<T> {
-  const { parse = defaultParse as (res: Response) => Promise<T>, loadingDelayMs = 0 } = options
   const [data, setData] = useState<T | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -46,9 +45,9 @@ export function useResource<T>(
     fetch(url)
       .then((res) => {
         if (!res.ok) throw new Error(`Failed to load: ${res.statusText}`)
-        return parse(res)
+        return as === "json" ? res.json() : res.text()
       })
-      .then((result) => {
+      .then((result: T) => {
         if (cancelled) return
         if (timerRef.current) clearTimeout(timerRef.current)
         setData(result)
@@ -65,7 +64,7 @@ export function useResource<T>(
       cancelled = true
       if (timerRef.current) clearTimeout(timerRef.current)
     }
-  }, [url, nonce, parse, loadingDelayMs])
+  }, [url, nonce, as, loadingDelayMs])
 
   return { data, loading, error, refetch }
 }

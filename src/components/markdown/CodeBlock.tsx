@@ -1,22 +1,32 @@
 import { useEffect, useState, useCallback } from "react"
 import { IconCheck, IconCopy } from "@tabler/icons-react"
 import { Button } from "@/components/ui/button"
-import { useTheme } from "@/components/theme-provider"
-import { MermaidDiagram } from "@/components/markdown/MermaidDiagram"
+import { tokensFor } from "@/lib/theme-tokens"
 
-let highlighterPromise: ReturnType<typeof loadHighlighter> | null = null
+const htmlCache = new Map<string, string>()
 
-async function loadHighlighter() {
+async function highlight(code: string, lang: string): Promise<string> {
+  const light = tokensFor("light").shikiTheme
+  const dark = tokensFor("dark").shikiTheme
   const { getSingletonHighlighter } = await import("shiki")
-  return getSingletonHighlighter({
-    themes: ["github-dark", "github-light"],
+  const highlighter = await getSingletonHighlighter({
+    themes: [light, dark],
     langs: [],
   })
-}
 
-function getHighlighter() {
-  if (!highlighterPromise) highlighterPromise = loadHighlighter()
-  return highlighterPromise
+  let resolvedLang = lang
+  if (lang && !highlighter.getLoadedLanguages().includes(lang)) {
+    try {
+      await highlighter.loadLanguage(lang as never)
+    } catch {
+      resolvedLang = "text"
+    }
+  }
+
+  return highlighter.codeToHtml(code, {
+    lang: resolvedLang,
+    themes: { light, dark },
+  })
 }
 
 interface CodeBlockProps {
@@ -25,43 +35,27 @@ interface CodeBlockProps {
 }
 
 export function CodeBlock({ code, lang }: CodeBlockProps) {
-  const { theme } = useTheme()
-  const isDark =
-    theme === "dark" ||
-    (theme === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches)
-  const [html, setHtml] = useState<string | null>(null)
+  const cacheKey = `${lang} ${code}`
+  const [html, setHtml] = useState<string | null>(() => htmlCache.get(cacheKey) ?? null)
   const [copied, setCopied] = useState(false)
 
   useEffect(() => {
-    if (lang === "mermaid") return
+    if (htmlCache.has(cacheKey)) return
     let cancelled = false
 
-    getHighlighter().then(async (highlighter) => {
-      const loaded = highlighter.getLoadedLanguages()
-      if (lang && !loaded.includes(lang)) {
-        try {
-          await highlighter.loadLanguage(lang as never)
-        } catch {
-          // Unknown language: fall back to plain text.
-        }
-      }
-      if (cancelled) return
-      try {
-        setHtml(
-          highlighter.codeToHtml(code, {
-            lang: highlighter.getLoadedLanguages().includes(lang) ? lang : "text",
-            theme: isDark ? "github-dark" : "github-light",
-          })
-        )
-      } catch {
-        setHtml(null)
-      }
-    })
+    highlight(code, lang)
+      .then((result) => {
+        htmlCache.set(cacheKey, result)
+        if (!cancelled) setHtml(result)
+      })
+      .catch(() => {
+        if (!cancelled) setHtml(null)
+      })
 
     return () => {
       cancelled = true
     }
-  }, [code, lang, isDark])
+  }, [cacheKey, code, lang])
 
   const handleCopy = useCallback(() => {
     navigator.clipboard.writeText(code).then(() => {
@@ -69,10 +63,6 @@ export function CodeBlock({ code, lang }: CodeBlockProps) {
       setTimeout(() => setCopied(false), 1500)
     })
   }, [code])
-
-  if (lang === "mermaid") {
-    return <MermaidDiagram code={code} />
-  }
 
   return (
     <div className="group/code relative my-4">
@@ -92,7 +82,7 @@ export function CodeBlock({ code, lang }: CodeBlockProps) {
         />
       ) : (
         <pre className="overflow-x-auto rounded-md bg-muted p-4 text-sm leading-relaxed">
-          <code>{code}</code>
+          <code className="text-foreground">{code}</code>
         </pre>
       )}
     </div>

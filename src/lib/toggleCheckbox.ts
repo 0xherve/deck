@@ -24,3 +24,19 @@ export function toggleCheckbox(source: string, index: number): string {
 
   return matched ? result : source
 }
+
+/**
+ * Returns the 0-indexed position of the task marker on the given 1-indexed
+ * source line, matching the ordering `toggleCheckbox` uses.
+ */
+export function taskIndexAtLine(source: string, line: number): number {
+  const lines = source.split("\n")
+  const markerRe = /^\s*(?:[-*+]|\d+[.)])\s+\[[ xX]\]\s/
+  let index = 0
+
+  for (let i = 0; i < line - 1 && i < lines.length; i++) {
+    if (markerRe.test(lines[i])) index += 1
+  }
+
+  return index
+}

@@ -1,5 +1,6 @@
 import fs from "node:fs"
 import path from "node:path"
+import { Readable } from "node:stream"
 import { Hono } from "hono"
 import { resolveSafePath, PathTraversalError } from "../middleware/security.ts"
 import { getFileTypeInfo } from "../file-types.ts"
@@ -37,6 +38,10 @@ async function readDir(dir: string, rootDir: string): Promise<TreeEntry[]> {
 
 export function createFileRoutes(rootDir: string) {
   const app = new Hono()
+
+  app.get("/api/repo", (c) => {
+    return c.json({ name: path.basename(rootDir), path: rootDir })
+  })
 
   app.get("/api/tree", async (c) => {
     const dirPath = c.req.query("path") ?? ""
@@ -80,12 +85,14 @@ export function createFileRoutes(rootDir: string) {
     try {
       const resolved = resolveSafePath(rootDir, filePath)
       const stat = await fs.promises.stat(resolved)
-      const buffer = await fs.promises.readFile(resolved)
 
       const ext = path.extname(resolved).toLowerCase()
       const { mime } = getFileTypeInfo(ext)
+      const stream = Readable.toWeb(
+        fs.createReadStream(resolved)
+      ) as unknown as ReadableStream
 
-      return new Response(buffer, {
+      return new Response(stream, {
         headers: {
           "Content-Type": mime,
           "Content-Length": stat.size.toString(),

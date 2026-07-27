@@ -11,9 +11,7 @@ interface Commit {
 }
 
 export function HistoryRoute() {
-  const { data: commits, loading, error } = useResource<Commit[]>("/api/git-log", {
-    parse: (res) => res.json(),
-  })
+  const { data: commits, loading, error } = useResource<Commit[]>("/api/git-log", { as: "json" })
 
   return (
     <div className="flex h-full flex-col">
