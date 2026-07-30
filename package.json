@@ -1,6 +1,6 @@
 {
   "name": "@0xherve/deck",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "A local-first code editor and file browser that runs in your browser",
   "license": "MIT",
   "homepage": "https://github.com/0xherve/deck#readme",
