@@ -1,17 +1,17 @@
-# Release — YOU finish the steps marked TODO.
+# Release
 #
 # How GitHub Actions workflows work (quick map):
 #   on:        when this file runs (here: pushing a version tag)
 #   jobs:      parallel units of work
 #   steps:     sequential commands inside a job
-#   secrets:   credentials (NPM_TOKEN) stored in repo Settings → Secrets
+#   permissions: grants GitHub OIDC access for npm Trusted Publishing
 #
 # Before your first release:
-#   1. Create an npm account + package name "deck" (or change name in package.json)
-#   2. npm login locally once to verify publish works: npm publish --dry-run
-#   3. Create NPM_TOKEN at npmjs.com → Access Tokens (Automation type for CI)
-#   4. Add NPM_TOKEN to GitHub repo → Settings → Secrets and variables → Actions
-#   5. Bump version in package.json, commit, tag: git tag v0.1.0 && git push origin v0.1.0
+#   1. Configure npm Trusted Publishing for:
+#      - owner/repo: 0xherve/deck
+#      - workflow filename: release.yml
+#      - allowed action: npm publish
+#   2. Bump version in package.json, commit, tag: git tag v0.1.0 && git push origin v0.1.0
 #
 # Tag format must match `on.push.tags` below.
 
@@ -27,51 +27,37 @@ jobs:
     runs-on: ubuntu-latest
 
     permissions:
-      contents: write
-      id-token: write 
+      contents: read
+      id-token: write
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - uses: oven-sh/setup-bun@v2
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
-          node-version: "20"
+          node-version: "24"
           registry-url: "https://registry.npmjs.org"
+          package-manager-cache: false
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      - name: Verify build
+      - name: Verify tag matches package version
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          PKG="$(node -p "require('./package.json').version")"
+          test "$TAG" = "$PKG" || {
+            echo "Tag v$TAG does not match package.json version $PKG"
+            exit 1
+          }
+
+      - name: Verify and build
         run: |
           bun run typecheck
           bun run build
           node dist/cli.js list
 
-      # TODO: ensure package.json version matches the git tag.
-      # Example: tag v0.1.0 → package.json must say "0.1.0" (no leading v).
-      # YOU: add a step that fails if they disagree, e.g.:
-      #   TAG="${GITHUB_REF_NAME#v}"
-      #   PKG=$(node -p "require('./package.json').version")
-      #   test "$TAG" = "$PKG" || exit 1
-
       - name: Publish to npm
         run: npm publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        # YOU: create NPM_TOKEN secret before this will work.
-        # First publish of a scoped package needs --access public; unscoped "deck" is public by default.
-
-      # TODO: Create a GitHub Release (optional but nice for users).
-      # Pick one approach:
-      #
-      # A) gh CLI (already on runner):
-      #   - run: gh release create "${{ github.ref_name }}" --generate-notes
-      #   - env: GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      #
-      # B) softprops/action-gh-release@v2:
-      #   - uses: softprops/action-gh-release@v2
-      #     with:
-      #       generate_release_notes: true
-      #
