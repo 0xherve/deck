@@ -23,32 +23,16 @@ function ext(name: string): string {
   return dot === -1 ? "" : name.slice(dot + 1).toLowerCase()
 }
 
-function pickFileIcon(name: string): ComponentType<IconProps> {
-  if (name === ".gitignore") return IconBrandGit
-  if (name.startsWith(".prettier")) return IconBraces
-  if (name.endsWith(".lock") || name.endsWith(".lockb")) return IconLock
-
-  switch (ext(name)) {
-    case "ts":
-      return IconFileTypeTs
-    case "tsx":
-      return IconFileTypeTsx
-    case "js":
-      return IconFileTypeJs
-    case "jsx":
-      return IconFileTypeJsx
-    case "json":
-      return IconBraces
-    case "md":
-    case "mdx":
-      return IconMarkdown
-    case "html":
-      return IconFileTypeHtml
-    case "css":
-      return IconFileTypeCss
-    default:
-      return IconFile
-  }
+const fileIconsByExt: Record<string, ComponentType<IconProps>> = {
+  ts: IconFileTypeTs,
+  tsx: IconFileTypeTsx,
+  js: IconFileTypeJs,
+  jsx: IconFileTypeJsx,
+  json: IconBraces,
+  md: IconMarkdown,
+  mdx: IconMarkdown,
+  html: IconFileTypeHtml,
+  css: IconFileTypeCss,
 }
 
 const fileIconColor: Record<string, string> = {
@@ -81,13 +65,13 @@ export function FileTypeIcon({
     return <Folder size={size} className={cn("shrink-0 text-muted-foreground", className)} />
   }
 
-  const Icon = pickFileIcon(name)
+  const Icon = name === ".gitignore"
+    ? IconBrandGit
+    : name.startsWith(".prettier")
+      ? IconBraces
+      : name.endsWith(".lock") || name.endsWith(".lockb")
+        ? IconLock
+        : fileIconsByExt[ext(name)] ?? IconFile
   const color = fileIconColor[ext(name)] ?? "text-muted-foreground/80"
   return <Icon size={size} className={cn("shrink-0", color, className)} />
-}
-
-export function splitFilePath(filePath: string) {
-  const i = filePath.lastIndexOf("/")
-  if (i === -1) return { name: filePath, dir: "" }
-  return { name: filePath.slice(i + 1), dir: filePath.slice(0, i) }
 }

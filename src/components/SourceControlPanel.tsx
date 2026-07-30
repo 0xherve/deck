@@ -13,8 +13,8 @@ import {
 } from "@tabler/icons-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import { useSCPanel } from "@/routes/__root"
-import { discardBuffer } from "@/lib/file-buffer"
+import { useSCPanel } from "@/stores/sc-panel"
+import { discardAllBuffers, discardBuffer } from "@/lib/file-buffer"
 import { useTabs } from "@/stores/tabs"
 
 type GitFile = { path: string; status: "M" | "A" | "D" | "U"; staged: boolean }
@@ -100,6 +100,7 @@ export function SourceControlPanel() {
     } else {
       navigate({ to: "/" })
     }
+    discardAllBuffers()
   }, [state.tabs, state.activeTab, dispatch, navigate])
 
   const switchBranch = useCallback(

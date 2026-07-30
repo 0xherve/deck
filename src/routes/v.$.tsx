@@ -53,13 +53,17 @@ export function FileViewRoute() {
     isMarkdown && mode === "source" ? filePath : null,
     handleDirtyChange
   )
+  const sourceContent = content ?? ""
+  const [loadedSourceFile, setLoadedSourceFile] = useState(filePath)
+  const [loadedSourceContent, setLoadedSourceContent] = useState(sourceContent)
   const [sourceValue, setSourceValue] = useState("")
 
-  useEffect(() => {
-    if (content !== null) {
-      setSourceValue(getBufferedContent() ?? content)
-    }
-  }, [filePath, content, getBufferedContent])
+  if (loadedSourceFile !== filePath || loadedSourceContent !== sourceContent) {
+    const nextValue = content === null ? "" : getBufferedContent() ?? content
+    setLoadedSourceFile(filePath)
+    setLoadedSourceContent(sourceContent)
+    setSourceValue(nextValue)
+  }
 
   const sourceValueRef = useRef(sourceValue)
 

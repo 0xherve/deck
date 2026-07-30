@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react"
 import { IconCheck, IconChevronDown, IconGitBranch } from "@tabler/icons-react"
+import { discardAllBuffers } from "@/lib/file-buffer"
+import { useTabs } from "@/stores/tabs"
 
 interface BranchesResponse {
   current: string
@@ -7,6 +9,7 @@ interface BranchesResponse {
 }
 
 export function BranchSwitcher() {
+  const { state } = useTabs()
   const [open, setOpen] = useState(false)
   const [current, setCurrent] = useState<string>("")
   const [branches, setBranches] = useState<string[]>([])
@@ -47,6 +50,10 @@ export function BranchSwitcher() {
 
   async function checkout(branch: string) {
     if (branch === current || busy) return
+    if (state.tabs.some((tab) => tab.dirty)) {
+      setError("Save or close unsaved editor tabs before switching branches.")
+      return
+    }
     setBusy(true)
     setError(null)
     try {
@@ -60,6 +67,7 @@ export function BranchSwitcher() {
         setError(data.error ?? "Checkout failed")
         return
       }
+      discardAllBuffers()
       // A checkout rewrites the working tree wholesale; a reload is the
       // cheapest way to resync every cached view (tree, status, open file).
       window.location.reload()

@@ -4,6 +4,25 @@ import { Button } from "@/components/ui/button"
 import { tokensFor } from "@/lib/theme-tokens"
 
 const htmlCache = new Map<string, string>()
+const HTML_CACHE_LIMIT = 100
+
+function readCachedHtml(key: string): string | null {
+  const cached = htmlCache.get(key)
+  if (!cached) return null
+
+  htmlCache.delete(key)
+  htmlCache.set(key, cached)
+  return cached
+}
+
+function writeCachedHtml(key: string, html: string) {
+  htmlCache.set(key, html)
+  while (htmlCache.size > HTML_CACHE_LIMIT) {
+    const oldest = htmlCache.keys().next().value
+    if (!oldest) break
+    htmlCache.delete(oldest)
+  }
+}
 
 async function highlight(code: string, lang: string): Promise<string> {
   const light = tokensFor("light").shikiTheme
@@ -36,26 +55,34 @@ interface CodeBlockProps {
 
 export function CodeBlock({ code, lang }: CodeBlockProps) {
   const cacheKey = `${lang} ${code}`
-  const [html, setHtml] = useState<string | null>(() => htmlCache.get(cacheKey) ?? null)
+  const [htmlState, setHtmlState] = useState(() => ({
+    cacheKey,
+    html: readCachedHtml(cacheKey),
+  }))
   const [copied, setCopied] = useState(false)
+  const html = htmlState.cacheKey === cacheKey ? htmlState.html : readCachedHtml(cacheKey)
+
+  if (htmlState.cacheKey !== cacheKey) {
+    setHtmlState({ cacheKey, html })
+  }
 
   useEffect(() => {
-    if (htmlCache.has(cacheKey)) return
+    if (html !== null) return
     let cancelled = false
 
     highlight(code, lang)
       .then((result) => {
-        htmlCache.set(cacheKey, result)
-        if (!cancelled) setHtml(result)
+        writeCachedHtml(cacheKey, result)
+        if (!cancelled) setHtmlState({ cacheKey, html: result })
       })
       .catch(() => {
-        if (!cancelled) setHtml(null)
+        if (!cancelled) setHtmlState({ cacheKey, html: null })
       })
 
     return () => {
       cancelled = true
     }
-  }, [cacheKey, code, lang])
+  }, [cacheKey, code, html, lang])
 
   const handleCopy = useCallback(() => {
     navigator.clipboard.writeText(code).then(() => {

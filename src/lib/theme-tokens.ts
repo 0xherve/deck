@@ -11,8 +11,6 @@ export type ResolvedTheme = "light" | "dark"
 export interface ThemeTokens {
   canvas: string
   canvasSubtle: string
-  surface: string
-  border: string
   fg: string
   fgMuted: string
   accent: string
@@ -33,8 +31,6 @@ export interface ThemeTokens {
 const VAR_NAMES = {
   canvas: "--background",
   canvasSubtle: "--muted",
-  surface: "--secondary",
-  border: "--border",
   fg: "--foreground",
   fgMuted: "--muted-foreground",
   accent: "--primary",

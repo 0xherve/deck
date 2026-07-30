@@ -20,16 +20,23 @@ export function CodeFileEditor({ filePath, content, onRefetch }: CodeFileEditorP
     [dispatch, filePath]
   )
   const { bufferChange, getBufferedContent, saveNow } = useAutoSave(filePath, handleDirty)
+  const [loadedFile, setLoadedFile] = useState(filePath)
+  const [loadedContent, setLoadedContent] = useState(content)
   const [value, setValue] = useState(() => getBufferedContent() ?? content)
   const valueRef = useRef(value)
+  let editorValue = value
+
+  if (loadedFile !== filePath || loadedContent !== content) {
+    const nextValue = getBufferedContent() ?? content
+    setLoadedFile(filePath)
+    setLoadedContent(content)
+    setValue(nextValue)
+    editorValue = nextValue
+  }
 
   useEffect(() => {
-    valueRef.current = value
-  }, [value])
-
-  useEffect(() => {
-    setValue(getBufferedContent() ?? content)
-  }, [filePath, content, getBufferedContent])
+    valueRef.current = editorValue
+  }, [editorValue])
 
   const { changedOnDisk, reload } = useDiskConflict(
     filePath,
@@ -48,7 +55,7 @@ export function CodeFileEditor({ filePath, content, onRefetch }: CodeFileEditorP
       {changedOnDisk && <ChangedOnDiskBanner onReload={reload} />}
       <div className="flex-1 overflow-auto">
         <SourceEditor
-          content={value}
+          content={editorValue}
           editable
           filePath={filePath}
           onChange={(next) => {

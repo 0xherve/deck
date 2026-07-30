@@ -11,8 +11,8 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarRail,
-  useSidebar,
 } from "@/components/ui/sidebar"
+import { useSidebar } from "@/components/ui/sidebar-context"
 import { FileTree } from "@/components/FileTree"
 import { BranchSwitcher } from "@/components/BranchSwitcher"
 import { useGitStatus } from "@/hooks/useGitStatus"

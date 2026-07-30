@@ -8,25 +8,25 @@ export function useDiskConflict(
   refetch: () => void,
   onResolved: () => void
 ) {
-  const [changedOnDisk, setChangedOnDisk] = useState(false)
+  const [change, setChange] = useState<{ filePath: string | null; changed: boolean }>({
+    filePath: null,
+    changed: false,
+  })
   const dirtyRef = useRef(dirty)
+  const changedOnDisk = change.filePath === filePath ? change.changed : false
 
   useEffect(() => {
     dirtyRef.current = dirty
   }, [dirty])
-
-  useEffect(() => {
-    setChangedOnDisk(false)
-  }, [filePath])
 
   useWatch(
     useCallback(
       (e) => {
         if (!filePath || e.path !== filePath) return
         if (dirtyRef.current) {
-          setChangedOnDisk(true)
+          setChange({ filePath, changed: true })
         } else {
-          setChangedOnDisk(false)
+          setChange({ filePath, changed: false })
           refetch()
         }
       },
@@ -35,7 +35,7 @@ export function useDiskConflict(
   )
 
   const reload = useCallback(() => {
-    setChangedOnDisk(false)
+    setChange({ filePath, changed: false })
     if (filePath) discardBuffer(filePath)
     onResolved()
     refetch()

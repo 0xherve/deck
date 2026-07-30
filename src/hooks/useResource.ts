@@ -31,15 +31,20 @@ export function useResource<T>(
 
     let cancelled = false
 
-    setData(null)
-    setError(null)
+    queueMicrotask(() => {
+      if (cancelled) return
+      setData(null)
+      setError(null)
+    })
 
     if (loadingDelayMs > 0) {
       timerRef.current = setTimeout(() => {
         if (!cancelled) setLoading(true)
       }, loadingDelayMs)
     } else {
-      setLoading(true)
+      queueMicrotask(() => {
+        if (!cancelled) setLoading(true)
+      })
     }
 
     fetch(url)

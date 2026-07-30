@@ -4,7 +4,7 @@ import { IconX, IconGitCompare } from "@tabler/icons-react"
 import { Button } from "@/components/ui/button"
 import { ThemeToggle } from "@/components/ThemeToggle"
 import { cn } from "@/lib/utils"
-import { useSCPanel } from "@/routes/__root"
+import { useSCPanel } from "@/stores/sc-panel"
 
 export function EditorTabs() {
   const { state, dispatch } = useTabs()

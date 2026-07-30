@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useNavigate } from "@tanstack/react-router"
 import { useTheme } from "@/components/theme-provider"
-import { useSCPanel } from "@/routes/__root"
+import { useSCPanel } from "@/stores/sc-panel"
 import { useTabs } from "@/stores/tabs"
 import { triggerSave } from "@/stores/save-actions"
 import { cn } from "@/lib/utils"
-import { FileTypeIcon, splitFilePath } from "@/lib/file-icons"
+import { discardAllBuffers } from "@/lib/file-buffer"
+import { FileTypeIcon } from "@/lib/file-icons"
+import { splitFilePath } from "@/lib/file-path"
 
 type TreeEntry = {
   name: string
@@ -45,16 +47,15 @@ export function DeckShortcuts() {
   const [currentBranch, setCurrentBranch] = useState("")
   const [index, setIndex] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
-  const modeRef = useRef<Mode>(null)
-  const indexRef = useRef(0)
 
-  modeRef.current = mode
-  indexRef.current = index
+  const openMode = useCallback((nextMode: Exclude<Mode, null>) => {
+    setQuery("")
+    setIndex(0)
+    setMode(nextMode)
+  }, [])
 
   useEffect(() => {
     if (!mode) return
-    setQuery("")
-    setIndex(0)
     const t = setTimeout(() => inputRef.current?.focus(), 0)
     return () => clearTimeout(t)
   }, [mode])
@@ -109,6 +110,19 @@ export function DeckShortcuts() {
     if (!res.ok) throw new Error(data.error ?? "Request failed")
   }
 
+  const checkoutBranch = useCallback(
+    async (branch: string) => {
+      if (state.tabs.some((tab) => tab.dirty)) {
+        window.alert("Save or close unsaved editor tabs before switching branches.")
+        return
+      }
+      await runGit("/api/git-checkout", { branch })
+      discardAllBuffers()
+      window.location.reload()
+    },
+    [state.tabs]
+  )
+
   const paletteItems: PaletteItem[] = useMemo(() => {
     const active = state.activeTab
     const items: PaletteItem[] = [
@@ -135,7 +149,7 @@ export function DeckShortcuts() {
         id: `checkout-${branch}`,
         label: `Checkout Branch: ${branch}`,
         run: () => {
-          void runGit("/api/git-checkout", { branch }).catch((e) => {
+          void checkoutBranch(branch).catch((e) => {
             window.alert(e instanceof Error ? e.message : "Checkout failed")
           })
         },
@@ -159,6 +173,7 @@ export function DeckShortcuts() {
     gitFiles,
     branches,
     currentBranch,
+    checkoutBranch,
     navigate,
     setTheme,
     toggleSC,
@@ -181,29 +196,27 @@ export function DeckShortcuts() {
   const safeIndex = items.length ? Math.min(index, items.length - 1) : 0
 
   const runSelection = useCallback(() => {
-    const currentMode = modeRef.current
-    if (!currentMode) return
-    const i = indexRef.current
-    if (currentMode === "quick-open") {
+    if (!mode) return
+    if (mode === "quick-open") {
       const q = query.trim().toLowerCase()
       const list = q
         ? files.filter((f) => f.toLowerCase().includes(q)).slice(0, 50)
         : files.slice(0, 50)
-      const path = list[i]
+      const path = list[index]
       if (path) navigate({ to: "/v/$", params: { _splat: path } })
     } else {
       const q = query.trim().toLowerCase()
       const list = q
         ? paletteItems.filter((item) => item.label.toLowerCase().includes(q))
         : paletteItems
-      list[i]?.run()
+      list[index]?.run()
     }
     setMode(null)
-  }, [files, paletteItems, query, navigate])
+  }, [files, index, mode, paletteItems, query, navigate])
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      if (modeRef.current) {
+      if (mode) {
         if (e.key === "Escape") {
           e.preventDefault()
           setMode(null)
@@ -234,12 +247,12 @@ export function DeckShortcuts() {
       }
       if (mod && e.shiftKey && e.key.toLowerCase() === "p") {
         e.preventDefault()
-        setMode("palette")
+        openMode("palette")
         return
       }
       if (mod && !e.shiftKey && e.key.toLowerCase() === "p") {
         e.preventDefault()
-        setMode("quick-open")
+        openMode("quick-open")
         return
       }
       if (e.altKey && e.key.toLowerCase() === "w") {
@@ -250,7 +263,7 @@ export function DeckShortcuts() {
 
     window.addEventListener("keydown", onKeyDown)
     return () => window.removeEventListener("keydown", onKeyDown)
-  }, [closeActiveTab, runSelection])
+  }, [closeActiveTab, items.length, mode, openMode, runSelection])
 
   if (!mode) return null
 

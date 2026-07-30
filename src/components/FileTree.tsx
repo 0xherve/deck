@@ -5,7 +5,6 @@ import { themeToTreeStyles, type TreeThemeStyles } from "@pierre/trees"
 import type { GitStatus, GitStatusEntry as PierreGitStatusEntry } from "@pierre/trees"
 import { resolveTheme } from "@pierre/diffs"
 import { useTheme } from "@/components/theme-provider"
-import { tokensFor } from "@/lib/theme-tokens"
 import type { GitStatusEntry } from "@/hooks/useGitStatus"
 import { useWatch } from "@/hooks/useWatch"
 
@@ -50,7 +49,7 @@ export function FileTree({ gitStatus = [], search = "" }: FileTreeProps) {
   const params = useParams({ strict: false }) as Record<string, string>
   const activePath = params._splat ?? ""
   const { resolvedTheme } = useTheme()
-  const shikiTheme = tokensFor(resolvedTheme).shikiTheme
+  const shikiTheme = resolvedTheme === "dark" ? "github-dark" : "github-light"
   const [treeStyle, setTreeStyle] = useState<TreeThemeStyles | undefined>(undefined)
 
   const loadedDirs = useRef<Set<string>>(new Set())

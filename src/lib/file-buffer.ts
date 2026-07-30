@@ -1,5 +1,7 @@
+const BUFFER_PREFIX = "deck:buffer:"
+
 export function bufferKey(filePath: string): string {
-  return `deck:buffer:${filePath}`
+  return `${BUFFER_PREFIX}${filePath}`
 }
 
 export function readBuffer(filePath: string): string | null {
@@ -12,6 +14,15 @@ export function writeBuffer(filePath: string, content: string) {
 
 export function discardBuffer(filePath: string) {
   sessionStorage.removeItem(bufferKey(filePath))
+}
+
+export function discardAllBuffers() {
+  for (let i = sessionStorage.length - 1; i >= 0; i -= 1) {
+    const key = sessionStorage.key(i)
+    if (key?.startsWith(BUFFER_PREFIX)) {
+      sessionStorage.removeItem(key)
+    }
+  }
 }
 
 export async function saveFile(filePath: string, content: string): Promise<void> {
