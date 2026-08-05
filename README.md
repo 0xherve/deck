@@ -36,7 +36,7 @@ deck stop all          # Stop all running instances
 
 - **File browser** — Tree navigation and tabbed editing
 - **Code editing** — Edit any text or code file and save to disk
-- **Markdown editor** — Rich WYSIWYG editing powered by TipTap (read, edit, and source modes)
+- **Markdown editor** — Rendered preview and source editing, with autosave and live task-list checkboxes
 - **Git diffs** — Stacked (unified) per-file diffs from the source control panel
 - **Source control** — Stage, unstage, commit, push, pull, stash, and branch operations
 - **Branch management** — List, create, and check out git branches from the UI
