@@ -85,13 +85,8 @@ GitHub Actions will build and publish when the tag is pushed.
 
 These features are on the wishlist but deferred from v0.1:
 
-- Compiled single-file binary (`bun --compile`)
-- JSON-based / shareable themes and a `~/.deck` config directory
 - Inline gutter diffs inside the code editor
 - Git blame and per-file commit history
 - Merge UI and automatic stash-then-checkout
 - Cross-file content search (grep)
 - LSP, and better code editing functionalities 
-- Customizable keybinding configuration
-- Remote / non-localhost access
-
